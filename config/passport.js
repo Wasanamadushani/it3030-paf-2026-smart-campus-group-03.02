@@ -1,5 +1,6 @@
 const passport = require("passport");
 const GoogleStrategy = require("passport-google-oauth20").Strategy;
+const mongoose = require("mongoose");
 const User = require("../models/User");
 
 passport.use(
@@ -11,6 +12,16 @@ passport.use(
     },
     async (accessToken, refreshToken, profile, done) => {
       try {
+        if (mongoose.connection.readyState !== 1) {
+          return done(null, {
+            id: `google:${profile.id}`,
+            googleId: profile.id,
+            name: profile.displayName,
+            email: profile.emails?.[0]?.value || "",
+            profilePic: profile.photos?.[0]?.value || "",
+          });
+        }
+
         let user = await User.findOne({ googleId: profile.id });
 
         if (!user) {
@@ -31,10 +42,22 @@ passport.use(
 );
 
 passport.serializeUser((user, done) => {
+  if (user && typeof user.id === "string" && user.id.startsWith("google:")) {
+    return done(null, user);
+  }
+
   done(null, user.id);
 });
 
 passport.deserializeUser(async (id, done) => {
-  const user = await User.findById(id);
-  done(null, user);
+  if (id && typeof id === "object" && typeof id.id === "string" && id.id.startsWith("google:")) {
+    return done(null, id);
+  }
+
+  try {
+    const user = await User.findById(id);
+    done(null, user);
+  } catch (err) {
+    done(err, null);
+  }
 });

@@ -9,11 +9,23 @@ require("./config/passport");
 
 const app = express();
 const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
+const port = Number(process.env.PORT) || 5000;
+const mongoUri = process.env.MONGO_URI;
+
+mongoose.set("bufferCommands", false);
 
 // DB CONNECT
-mongoose.connect(process.env.MONGO_URI)
-  .then(() => console.log("MongoDB Connected"))
-  .catch(err => console.log(err));
+if (!mongoUri) {
+  throw new Error("MONGO_URI is missing in environment variables");
+}
+
+mongoose.connection.on("error", (err) => {
+  console.error("MongoDB connection error:", err.message);
+});
+
+mongoose.connection.on("disconnected", () => {
+  console.warn("MongoDB disconnected");
+});
 
 // SESSION
 app.use(session({
@@ -77,6 +89,20 @@ app.get("/logout", (req, res) => {
 });
 
 // START SERVER
-app.listen(process.env.PORT, () => {
-  console.log("Server running on port", process.env.PORT);
-});
+async function startServer() {
+  try {
+    await mongoose.connect(mongoUri, {
+      serverSelectionTimeoutMS: 10000,
+    });
+    console.log("MongoDB Connected");
+  } catch (err) {
+    console.error("Failed to connect to MongoDB:", err.message);
+    console.warn("Starting server without MongoDB. Google users will not be persisted.");
+  }
+
+  app.listen(port, () => {
+    console.log("Server running on port", port);
+  });
+}
+
+startServer();
