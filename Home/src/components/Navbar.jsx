@@ -21,6 +21,10 @@ export default function Navbar({ userName = "Alex Silva", role = "USER" }) {
   const [authMode, setAuthMode] = useState("login");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSendingCode, setIsSendingCode] = useState(false);
+  const [isOtpSent, setIsOtpSent] = useState(false);
+  const [isOtpVerified, setIsOtpVerified] = useState(false);
+  const [resetToken, setResetToken] = useState("");
+  const [showLoginPassword, setShowLoginPassword] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
   const [fieldErrors, setFieldErrors] = useState({});
@@ -38,6 +42,7 @@ export default function Navbar({ userName = "Alex Silva", role = "USER" }) {
 
   const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || "http://localhost:8081";
   const oauthBaseUrl = import.meta.env.VITE_OAUTH_BASE_URL || "http://localhost:5000";
+  const authApiBaseUrl = import.meta.env.VITE_AUTH_API_BASE_URL || "http://localhost:8081";
   const passwordChecks = [
     {
       id: "length",
@@ -114,16 +119,20 @@ export default function Navbar({ userName = "Alex Silva", role = "USER" }) {
       nextErrors.email = "Please enter a valid email address";
     }
 
-    if (passwordChecks.some((item) => !item.passed)) {
-      nextErrors.password = "Password does not meet all requirements";
+    if (isOtpSent && !isOtpVerified) {
+      if (!verificationCode.trim()) {
+        nextErrors.verificationCode = "Verification code is required";
+      }
     }
 
-    if (password !== confirmPassword) {
-      nextErrors.confirmPassword = "Passwords do not match";
-    }
+    if (isOtpVerified) {
+      if (passwordChecks.some((item) => !item.passed)) {
+        nextErrors.password = "Password does not meet all requirements";
+      }
 
-    if (!verificationCode.trim()) {
-      nextErrors.verificationCode = "Verification code is required";
+      if (password !== confirmPassword) {
+        nextErrors.confirmPassword = "Passwords do not match";
+      }
     }
 
     setFieldErrors(nextErrors);
@@ -133,7 +142,7 @@ export default function Navbar({ userName = "Alex Silva", role = "USER" }) {
   async function handleSendResetCode() {
     if (!isValidEmail(email)) {
       setFieldErrors((prev) => ({ ...prev, email: "Please enter a valid email address" }));
-      return;
+      return false;
     }
 
     setIsSendingCode(true);
@@ -141,7 +150,7 @@ export default function Navbar({ userName = "Alex Silva", role = "USER" }) {
     setSuccessMessage("");
 
     try {
-      const response = await fetch(`${apiBaseUrl}/api/auth/forgot-password/send-code`, {
+      const response = await fetch(`${authApiBaseUrl}/api/auth/forgot-password/send-code`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -153,12 +162,17 @@ export default function Navbar({ userName = "Alex Silva", role = "USER" }) {
 
       if (!response.ok) {
         setErrorMessage(data.message || "Failed to send reset code");
-        return;
+        return false;
       }
 
       setSuccessMessage(data.message || "Verification code sent to your email");
+      setIsOtpSent(true);
+      setIsOtpVerified(false);
+      setResetToken("");
+      return true;
     } catch (error) {
       setErrorMessage("Unable to reach backend server");
+      return false;
     } finally {
       setIsSendingCode(false);
     }
@@ -246,6 +260,53 @@ export default function Navbar({ userName = "Alex Silva", role = "USER" }) {
 
   async function handleForgotPassword(event) {
     event.preventDefault();
+
+    if (!isOtpSent) {
+      await handleSendResetCode();
+      return;
+    }
+
+    if (!isOtpVerified) {
+      if (!validateForgotPasswordForm()) {
+        return;
+      }
+
+      setIsSubmitting(true);
+      setErrorMessage("");
+      setSuccessMessage("");
+
+      try {
+        const response = await fetch(`${authApiBaseUrl}/api/auth/forgot-password/verify`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            email,
+            verificationCode,
+          }),
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          setErrorMessage(data.message || "OTP verification failed");
+          return;
+        }
+
+        setResetToken(data.resetToken || "");
+        setIsOtpVerified(true);
+        setSuccessMessage("OTP verified. You can now set a new password.");
+        setFieldErrors({});
+      } catch (error) {
+        setErrorMessage("Unable to reach backend server");
+      } finally {
+        setIsSubmitting(false);
+      }
+
+      return;
+    }
+
     if (!validateForgotPasswordForm()) {
       return;
     }
@@ -255,14 +316,14 @@ export default function Navbar({ userName = "Alex Silva", role = "USER" }) {
     setSuccessMessage("");
 
     try {
-      const response = await fetch(`${apiBaseUrl}/api/auth/forgot-password/reset`, {
+      const response = await fetch(`${authApiBaseUrl}/api/auth/forgot-password/reset`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
           email,
-          verificationCode,
+          resetToken,
           newPassword: password,
           confirmPassword,
         }),
@@ -280,6 +341,9 @@ export default function Navbar({ userName = "Alex Silva", role = "USER" }) {
       setPassword("");
       setConfirmPassword("");
       setVerificationCode("");
+      setIsOtpSent(false);
+      setIsOtpVerified(false);
+      setResetToken("");
       setFieldErrors({});
     } catch (error) {
       setErrorMessage("Unable to reach backend server");
@@ -294,11 +358,19 @@ export default function Navbar({ userName = "Alex Silva", role = "USER" }) {
     setErrorMessage("");
     setSuccessMessage("");
     setFieldErrors({});
+    setIsOtpSent(false);
+    setIsOtpVerified(false);
+    setResetToken("");
+    setShowLoginPassword(false);
 
     if (mode === "login") {
       setConfirmPassword("");
       setVerificationCode("");
       setAgreeTerms(false);
+      setIsOtpSent(false);
+      setIsOtpVerified(false);
+      setResetToken("");
+      setShowLoginPassword(false);
       return;
     }
 
@@ -308,6 +380,10 @@ export default function Navbar({ userName = "Alex Silva", role = "USER" }) {
       setConfirmPassword("");
       setVerificationCode("");
       setAgreeTerms(false);
+      setIsOtpSent(false);
+      setIsOtpVerified(false);
+      setResetToken("");
+      setShowLoginPassword(false);
     }
   }
 
@@ -512,44 +588,46 @@ export default function Navbar({ userName = "Alex Silva", role = "USER" }) {
               />
               {fieldErrors.email && <p className="field-error">{fieldErrors.email}</p>}
 
-              {authMode === "forgot" && (
-                <button
-                  className="btn btn-ghost send-code-btn"
-                  type="button"
-                  onClick={handleSendResetCode}
-                  disabled={isSendingCode}
-                >
-                  {isSendingCode ? "Sending code..." : "Send verification code"}
-                </button>
+              {(authMode !== "forgot" || isOtpVerified) && (
+                <>
+                  <label htmlFor="password">Password</label>
+                  <input
+                    id="password"
+                    type={authMode === "login" && showLoginPassword ? "text" : "password"}
+                    value={password}
+                    onChange={(event) => {
+                      setPassword(event.target.value);
+                      clearFieldError("password");
+                      clearFieldError("confirmPassword");
+                    }}
+                    placeholder={authMode === "forgot" ? "Enter new password" : "Enter your password"}
+                    required
+                  />
+                </>
               )}
-
-              <label htmlFor="password">Password</label>
-              <input
-                id="password"
-                type="password"
-                value={password}
-                onChange={(event) => {
-                  setPassword(event.target.value);
-                  clearFieldError("password");
-                  clearFieldError("confirmPassword");
-                }}
-                placeholder={authMode === "forgot" ? "Enter new password" : "Enter your password"}
-                required
-              />
 
               {authMode === "login" && (
-                <button
-                  type="button"
-                  className="forgot-link"
-                  onClick={() => openAuthModal("forgot")}
-                >
-                  Forgot password?
-                </button>
+                <div className="login-inline-actions">
+                  <button
+                    type="button"
+                    className="forgot-link"
+                    onClick={() => setShowLoginPassword((prev) => !prev)}
+                  >
+                    {showLoginPassword ? "Hide password" : "Show password"}
+                  </button>
+                  <button
+                    type="button"
+                    className="forgot-link"
+                    onClick={() => openAuthModal("forgot")}
+                  >
+                    Forgot password?
+                  </button>
+                </div>
               )}
 
-              {(authMode === "register" || authMode === "forgot") && (
+              {(authMode === "register" || (authMode === "forgot" && isOtpSent)) && (
                 <>
-                  {authMode === "forgot" && (
+                  {authMode === "forgot" && isOtpSent && !isOtpVerified && (
                     <>
                       <label htmlFor="verificationCode">Verification Code</label>
                       <input
@@ -569,35 +647,39 @@ export default function Navbar({ userName = "Alex Silva", role = "USER" }) {
                     </>
                   )}
 
-                  <div className="password-strength-head">
-                    <span>Password strength</span>
-                    <strong>{passwordStrengthLabel}</strong>
-                  </div>
-                  <div className="password-meter" aria-hidden="true">
-                    <span style={{ width: `${(passedPasswordChecks / passwordChecks.length) * 100}%` }} />
-                  </div>
-                  <ul className="password-rules">
-                    {passwordChecks.map((rule) => (
-                      <li key={rule.id} className={rule.passed ? "passed" : ""}>
-                        {rule.label}
-                      </li>
-                    ))}
-                  </ul>
+                  {(authMode === "register" || isOtpVerified) && (
+                    <>
+                      <div className="password-strength-head">
+                        <span>Password strength</span>
+                        <strong>{passwordStrengthLabel}</strong>
+                      </div>
+                      <div className="password-meter" aria-hidden="true">
+                        <span style={{ width: `${(passedPasswordChecks / passwordChecks.length) * 100}%` }} />
+                      </div>
+                      <ul className="password-rules">
+                        {passwordChecks.map((rule) => (
+                          <li key={rule.id} className={rule.passed ? "passed" : ""}>
+                            {rule.label}
+                          </li>
+                        ))}
+                      </ul>
 
-                  <label htmlFor="confirmPassword">Confirm Password</label>
-                  <input
-                    id="confirmPassword"
-                    type="password"
-                    value={confirmPassword}
-                    onChange={(event) => {
-                      setConfirmPassword(event.target.value);
-                      clearFieldError("confirmPassword");
-                    }}
-                    placeholder="Re-enter your password"
-                    required
-                  />
-                  {fieldErrors.confirmPassword && (
-                    <p className="field-error">{fieldErrors.confirmPassword}</p>
+                      <label htmlFor="confirmPassword">Confirm Password</label>
+                      <input
+                        id="confirmPassword"
+                        type="password"
+                        value={confirmPassword}
+                        onChange={(event) => {
+                          setConfirmPassword(event.target.value);
+                          clearFieldError("confirmPassword");
+                        }}
+                        placeholder="Re-enter your password"
+                        required
+                      />
+                      {fieldErrors.confirmPassword && (
+                        <p className="field-error">{fieldErrors.confirmPassword}</p>
+                      )}
+                    </>
                   )}
 
                   {authMode === "register" && (
@@ -624,18 +706,30 @@ export default function Navbar({ userName = "Alex Silva", role = "USER" }) {
               {successMessage && <p className="login-success">{successMessage}</p>}
               {errorMessage && <p className="login-error">{errorMessage}</p>}
 
-              <button className="btn btn-primary auth-primary-btn" type="submit" disabled={isSubmitting}>
+              <button
+                className="btn btn-primary auth-primary-btn"
+                type="submit"
+                disabled={isSubmitting || (authMode === "forgot" && !isOtpSent && isSendingCode)}
+              >
                 {isSubmitting
                   ? authMode === "login"
                     ? "Signing in..."
                     : authMode === "register"
                       ? "Creating account..."
-                      : "Resetting password..."
+                      : isOtpSent
+                        ? isOtpVerified
+                          ? "Resetting password..."
+                          : "Verifying OTP..."
+                        : "Sending OTP..."
                   : authMode === "login"
                     ? "Sign in"
                     : authMode === "register"
                       ? "Create account"
-                      : "Reset password"}
+                      : isOtpSent
+                        ? isOtpVerified
+                          ? "Reset password"
+                          : "Verify OTP"
+                        : "Send OTP"}
               </button>
 
               {authMode === "login" && (

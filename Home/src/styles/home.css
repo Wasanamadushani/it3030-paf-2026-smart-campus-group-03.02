@@ -284,6 +284,13 @@ a {
   cursor: pointer;
 }
 
+.login-inline-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.6rem;
+}
+
 .forgot-link:hover {
   color: #263ea3;
   text-decoration: underline;

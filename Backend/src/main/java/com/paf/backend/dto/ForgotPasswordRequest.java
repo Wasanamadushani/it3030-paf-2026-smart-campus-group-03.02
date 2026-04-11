@@ -9,9 +9,9 @@ public record ForgotPasswordRequest(
         @NotBlank(message = "Email is required")
         @Email(message = "Please provide a valid email")
         String email,
-    @NotBlank(message = "Verification code is required")
-    @Size(min = 6, max = 6, message = "Verification code must be 6 digits")
-    String verificationCode,
+        @Size(min = 6, max = 6, message = "Verification code must be 6 digits")
+        String verificationCode,
+        String resetToken,
         @NotBlank(message = "New password is required")
         @Size(min = 6, message = "New password must be at least 6 characters")
         String newPassword,
@@ -21,5 +21,11 @@ public record ForgotPasswordRequest(
     @AssertTrue(message = "Passwords do not match")
     public boolean isPasswordsMatching() {
         return newPassword != null && newPassword.equals(confirmPassword);
+    }
+
+    @AssertTrue(message = "Verification code or reset token is required")
+    public boolean hasVerificationCodeOrToken() {
+        return (verificationCode != null && !verificationCode.trim().isEmpty())
+                || (resetToken != null && !resetToken.trim().isEmpty());
     }
 }
