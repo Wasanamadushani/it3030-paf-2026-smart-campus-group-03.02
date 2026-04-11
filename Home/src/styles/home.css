@@ -272,6 +272,27 @@ a {
   box-shadow: 0 0 0 3px rgba(78, 107, 250, 0.16);
 }
 
+.forgot-link {
+  justify-self: end;
+  border: 0;
+  background: transparent;
+  color: #3458d8;
+  font-size: 0.8rem;
+  font-weight: 600;
+  padding: 0;
+  margin-top: 0.1rem;
+  cursor: pointer;
+}
+
+.forgot-link:hover {
+  color: #263ea3;
+  text-decoration: underline;
+}
+
+.send-code-btn {
+  margin-top: 0.15rem;
+}
+
 .field-error {
   margin: 0.1rem 0;
   color: #bf2f45;

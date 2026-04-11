@@ -14,11 +14,13 @@ export default function Navbar({ userName = "Alex Silva", role = "USER" }) {
   const [isLoginOpen, setIsLoginOpen] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [verificationCode, setVerificationCode] = useState("");
   const [fullName, setFullName] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [agreeTerms, setAgreeTerms] = useState(false);
   const [authMode, setAuthMode] = useState("login");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSendingCode, setIsSendingCode] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
   const [fieldErrors, setFieldErrors] = useState({});
@@ -62,6 +64,10 @@ export default function Navbar({ userName = "Alex Silva", role = "USER" }) {
   const passwordStrengthLabel =
     passedPasswordChecks <= 1 ? "Weak" : passedPasswordChecks <= 3 ? "Medium" : "Strong";
 
+  function isValidEmail(value) {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
+  }
+
   function clearFieldError(fieldName) {
     setFieldErrors((prev) => {
       if (!prev[fieldName]) {
@@ -81,7 +87,7 @@ export default function Navbar({ userName = "Alex Silva", role = "USER" }) {
       nextErrors.fullName = "Please enter your full name";
     }
 
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+    if (!isValidEmail(email)) {
       nextErrors.email = "Please enter a valid email address";
     }
 
@@ -99,6 +105,63 @@ export default function Navbar({ userName = "Alex Silva", role = "USER" }) {
 
     setFieldErrors(nextErrors);
     return Object.keys(nextErrors).length === 0;
+  }
+
+  function validateForgotPasswordForm() {
+    const nextErrors = {};
+
+    if (!isValidEmail(email)) {
+      nextErrors.email = "Please enter a valid email address";
+    }
+
+    if (passwordChecks.some((item) => !item.passed)) {
+      nextErrors.password = "Password does not meet all requirements";
+    }
+
+    if (password !== confirmPassword) {
+      nextErrors.confirmPassword = "Passwords do not match";
+    }
+
+    if (!verificationCode.trim()) {
+      nextErrors.verificationCode = "Verification code is required";
+    }
+
+    setFieldErrors(nextErrors);
+    return Object.keys(nextErrors).length === 0;
+  }
+
+  async function handleSendResetCode() {
+    if (!isValidEmail(email)) {
+      setFieldErrors((prev) => ({ ...prev, email: "Please enter a valid email address" }));
+      return;
+    }
+
+    setIsSendingCode(true);
+    setErrorMessage("");
+    setSuccessMessage("");
+
+    try {
+      const response = await fetch(`${apiBaseUrl}/api/auth/forgot-password/send-code`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ email }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        setErrorMessage(data.message || "Failed to send reset code");
+        return;
+      }
+
+      setSuccessMessage(data.message || "Verification code sent to your email");
+    } catch (error) {
+      setErrorMessage("Unable to reach backend server");
+    } finally {
+      setIsSendingCode(false);
+    }
   }
 
   async function handleLogin(event) {
@@ -181,6 +244,50 @@ export default function Navbar({ userName = "Alex Silva", role = "USER" }) {
     }
   }
 
+  async function handleForgotPassword(event) {
+    event.preventDefault();
+    if (!validateForgotPasswordForm()) {
+      return;
+    }
+
+    setIsSubmitting(true);
+    setErrorMessage("");
+    setSuccessMessage("");
+
+    try {
+      const response = await fetch(`${apiBaseUrl}/api/auth/forgot-password/reset`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email,
+          verificationCode,
+          newPassword: password,
+          confirmPassword,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        setErrorMessage(data.message || "Password reset failed");
+        return;
+      }
+
+      setSuccessMessage(data.message || "Password reset successful. Please sign in.");
+      setAuthMode("login");
+      setPassword("");
+      setConfirmPassword("");
+      setVerificationCode("");
+      setFieldErrors({});
+    } catch (error) {
+      setErrorMessage("Unable to reach backend server");
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
   function openAuthModal(mode) {
     setAuthMode(mode);
     setIsLoginOpen(true);
@@ -190,6 +297,16 @@ export default function Navbar({ userName = "Alex Silva", role = "USER" }) {
 
     if (mode === "login") {
       setConfirmPassword("");
+      setVerificationCode("");
+      setAgreeTerms(false);
+      return;
+    }
+
+    if (mode === "forgot") {
+      setFullName("");
+      setPassword("");
+      setConfirmPassword("");
+      setVerificationCode("");
       setAgreeTerms(false);
     }
   }
@@ -319,7 +436,13 @@ export default function Navbar({ userName = "Alex Silva", role = "USER" }) {
         <div className="modal-overlay" role="dialog" aria-modal="true">
           <div className="login-modal">
             <div className="modal-head">
-              <h3>{authMode === "login" ? "Login to My Account" : "Create My Account"}</h3>
+              <h3>
+                {authMode === "login"
+                  ? "Login to My Account"
+                  : authMode === "register"
+                    ? "Create My Account"
+                    : "Reset Password"}
+              </h3>
               <button
                 className="modal-close"
                 type="button"
@@ -349,7 +472,13 @@ export default function Navbar({ userName = "Alex Silva", role = "USER" }) {
 
             <form
               className="login-form"
-              onSubmit={authMode === "login" ? handleLogin : handleRegister}
+              onSubmit={
+                authMode === "login"
+                  ? handleLogin
+                  : authMode === "register"
+                    ? handleRegister
+                    : handleForgotPassword
+              }
             >
               {authMode === "register" && (
                 <>
@@ -383,6 +512,17 @@ export default function Navbar({ userName = "Alex Silva", role = "USER" }) {
               />
               {fieldErrors.email && <p className="field-error">{fieldErrors.email}</p>}
 
+              {authMode === "forgot" && (
+                <button
+                  className="btn btn-ghost send-code-btn"
+                  type="button"
+                  onClick={handleSendResetCode}
+                  disabled={isSendingCode}
+                >
+                  {isSendingCode ? "Sending code..." : "Send verification code"}
+                </button>
+              )}
+
               <label htmlFor="password">Password</label>
               <input
                 id="password"
@@ -393,12 +533,42 @@ export default function Navbar({ userName = "Alex Silva", role = "USER" }) {
                   clearFieldError("password");
                   clearFieldError("confirmPassword");
                 }}
-                placeholder="Enter your password"
+                placeholder={authMode === "forgot" ? "Enter new password" : "Enter your password"}
                 required
               />
 
-              {authMode === "register" && (
+              {authMode === "login" && (
+                <button
+                  type="button"
+                  className="forgot-link"
+                  onClick={() => openAuthModal("forgot")}
+                >
+                  Forgot password?
+                </button>
+              )}
+
+              {(authMode === "register" || authMode === "forgot") && (
                 <>
+                  {authMode === "forgot" && (
+                    <>
+                      <label htmlFor="verificationCode">Verification Code</label>
+                      <input
+                        id="verificationCode"
+                        type="text"
+                        value={verificationCode}
+                        onChange={(event) => {
+                          setVerificationCode(event.target.value);
+                          clearFieldError("verificationCode");
+                        }}
+                        placeholder="Enter 6-digit code"
+                        required
+                      />
+                      {fieldErrors.verificationCode && (
+                        <p className="field-error">{fieldErrors.verificationCode}</p>
+                      )}
+                    </>
+                  )}
+
                   <div className="password-strength-head">
                     <span>Password strength</span>
                     <strong>{passwordStrengthLabel}</strong>
@@ -430,18 +600,22 @@ export default function Navbar({ userName = "Alex Silva", role = "USER" }) {
                     <p className="field-error">{fieldErrors.confirmPassword}</p>
                   )}
 
-                  <label className="terms-check">
-                    <input
-                      type="checkbox"
-                      checked={agreeTerms}
-                      onChange={(event) => {
-                        setAgreeTerms(event.target.checked);
-                        clearFieldError("agreeTerms");
-                      }}
-                    />
-                    <span>I agree to the Terms and Privacy Policy</span>
-                  </label>
-                  {fieldErrors.agreeTerms && <p className="field-error">{fieldErrors.agreeTerms}</p>}
+                  {authMode === "register" && (
+                    <>
+                      <label className="terms-check">
+                        <input
+                          type="checkbox"
+                          checked={agreeTerms}
+                          onChange={(event) => {
+                            setAgreeTerms(event.target.checked);
+                            clearFieldError("agreeTerms");
+                          }}
+                        />
+                        <span>I agree to the Terms and Privacy Policy</span>
+                      </label>
+                      {fieldErrors.agreeTerms && <p className="field-error">{fieldErrors.agreeTerms}</p>}
+                    </>
+                  )}
                 </>
               )}
 
@@ -454,10 +628,14 @@ export default function Navbar({ userName = "Alex Silva", role = "USER" }) {
                 {isSubmitting
                   ? authMode === "login"
                     ? "Signing in..."
-                    : "Creating account..."
+                    : authMode === "register"
+                      ? "Creating account..."
+                      : "Resetting password..."
                   : authMode === "login"
                     ? "Sign in"
-                    : "Create account"}
+                    : authMode === "register"
+                      ? "Create account"
+                      : "Reset password"}
               </button>
 
               {authMode === "login" && (
@@ -496,7 +674,9 @@ export default function Navbar({ userName = "Alex Silva", role = "USER" }) {
                 type="button"
                 onClick={() => openAuthModal(authMode === "login" ? "register" : "login")}
               >
-                {authMode === "login" ? "Need an account? Register" : "Already have an account? Login"}
+                {authMode === "login"
+                  ? "Need an account? Register"
+                  : "Back to login"}
               </button>
             </form>
           </div>
