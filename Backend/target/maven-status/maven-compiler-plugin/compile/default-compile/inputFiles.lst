@@ -1,0 +1,8 @@
+D:\paf group project\it3030-paf-2026-smart-campus-group-03.02\Backend\src\main\java\com\paf\backend\BackendApplication.java
+D:\paf group project\it3030-paf-2026-smart-campus-group-03.02\Backend\src\main\java\com\paf\backend\config\CorsConfig.java
+D:\paf group project\it3030-paf-2026-smart-campus-group-03.02\Backend\src\main\java\com\paf\backend\controller\AuthController.java
+D:\paf group project\it3030-paf-2026-smart-campus-group-03.02\Backend\src\main\java\com\paf\backend\controller\HealthController.java
+D:\paf group project\it3030-paf-2026-smart-campus-group-03.02\Backend\src\main\java\com\paf\backend\controller\HomeController.java
+D:\paf group project\it3030-paf-2026-smart-campus-group-03.02\Backend\src\main\java\com\paf\backend\dto\LoginRequest.java
+D:\paf group project\it3030-paf-2026-smart-campus-group-03.02\Backend\src\main\java\com\paf\backend\dto\LoginResponse.java
+D:\paf group project\it3030-paf-2026-smart-campus-group-03.02\Backend\src\main\java\com\paf\backend\dto\RegisterRequest.java
