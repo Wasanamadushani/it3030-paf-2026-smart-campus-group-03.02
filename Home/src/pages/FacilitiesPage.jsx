@@ -1,5 +1,6 @@
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
+import { Link } from "react-router-dom";
 import "../styles/facilities.css";
 
 const facilityCategories = [
@@ -50,9 +51,9 @@ export default function FacilitiesPage() {
                   <span className="facility-status">ACTIVE</span>
                 </div>
                 <p className="facility-description">{category.description}</p>
-                <button type="button" className="facility-btn">
+                <Link to="/facilities/view" className="facility-btn">
                   View Details
-                </button>
+                </Link>
               </article>
             ))}
           </section>
