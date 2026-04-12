@@ -1,33 +1,56 @@
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
-import { Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import "../styles/facilities.css";
 
-const facilityCategories = [
+const FACILITY_SNAPSHOT = [
   {
-    title: "Lecture Halls",
-    description:
-      "Spacious lecture halls suitable for classes, seminars, and academic presentations.",
+    name: "Lecture Hall A1",
+    type: "Room",
+    status: "ACTIVE",
   },
   {
-    title: "Labs",
-    description:
-      "Well-equipped computing and science labs for practical sessions and research work.",
+    name: "Lecture Hall B2",
+    type: "Room",
+    status: "ACTIVE",
   },
   {
-    title: "Meeting Rooms",
-    description:
-      "Professional meeting rooms for discussions, project reviews, and team collaboration.",
+    name: "Networking Lab",
+    type: "Lab",
+    status: "ACTIVE",
   },
   {
-    title: "Equipment",
-    description:
-      "Shared campus equipment including projectors, sound systems, and support tools.",
+    name: "Software Lab",
+    type: "Lab",
+    status: "OUT_OF_SERVICE",
+  },
+  {
+    name: "Projector Kit",
+    type: "Equipment",
+    status: "ACTIVE",
+  },
+  {
+    name: "Portable PA System",
+    type: "Equipment",
+    status: "OUT_OF_SERVICE",
   },
 ];
 
 export default function FacilitiesPage() {
   const role = "ADMIN";
+  const navigate = useNavigate();
+  const totalFacilities = FACILITY_SNAPSHOT.length;
+  const activeFacilities = FACILITY_SNAPSHOT.filter((facility) => facility.status === "ACTIVE").length;
+  const outOfServiceFacilities = totalFacilities - activeFacilities;
+
+  const facilitiesByType = ["Room", "Lab", "Equipment"].map((type) => {
+    const count = FACILITY_SNAPSHOT.filter((facility) => facility.type === type).length;
+    return { type, count };
+  });
+
+  const maxTypeCount = Math.max(...facilitiesByType.map((item) => item.count), 1);
+  const activePercentage = Math.round((activeFacilities / totalFacilities) * 100);
+  const outOfServicePercentage = 100 - activePercentage;
 
   return (
     <div className="app-shell facilities-page-shell">
@@ -36,26 +59,80 @@ export default function FacilitiesPage() {
       <main className="facilities-page">
         <div className="facilities-container">
           <header className="facilities-header">
-            <h1>Facilities &amp; Assets Catalogue</h1>
+            <h1>Facilities Dashboard</h1>
             <p>
-              Browse and manage available campus facilities including lecture halls, labs, meeting
-              rooms, and equipment.
+              Get a quick overview of facilities status, usage distribution, and access the complete
+              facilities list from one place.
             </p>
           </header>
 
-          <section className="facilities-grid" aria-label="Facility categories">
-            {facilityCategories.map((category) => (
-              <article key={category.title} className="facility-card">
-                <div className="facility-card-top">
-                  <h2>{category.title}</h2>
-                  <span className="facility-status">ACTIVE</span>
+          <section className="fac-stats-grid" aria-label="Facility summary statistics">
+            <article className="fac-stat-card">
+              <p>Total Facilities</p>
+              <strong>{totalFacilities}</strong>
+            </article>
+            <article className="fac-stat-card">
+              <p>Active Facilities</p>
+              <strong>{activeFacilities}</strong>
+            </article>
+            <article className="fac-stat-card">
+              <p>Out of Service</p>
+              <strong>{outOfServiceFacilities}</strong>
+            </article>
+          </section>
+
+          <section className="fac-visual-grid" aria-label="Facilities visual overview">
+            <article className="fac-visual-card">
+              <h2>Facilities by Type</h2>
+              <div className="fac-type-list">
+                {facilitiesByType.map((item) => (
+                  <div key={item.type} className="fac-type-row">
+                    <div className="fac-type-head">
+                      <span>{item.type}</span>
+                      <strong>{item.count}</strong>
+                    </div>
+                    <div className="fac-type-track">
+                      <div
+                        className="fac-type-fill"
+                        style={{ width: `${(item.count / maxTypeCount) * 100}%` }}
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </article>
+
+            <article className="fac-visual-card">
+              <h2>Status Distribution</h2>
+              <div className="fac-status-track" aria-label="Status distribution bar">
+                <div className="fac-status-active" style={{ width: `${activePercentage}%` }} />
+                <div
+                  className="fac-status-out"
+                  style={{ width: `${outOfServicePercentage}%` }}
+                />
+              </div>
+
+              <div className="fac-status-legend">
+                <div>
+                  <span className="fac-legend-dot fac-legend-active" />
+                  <p>ACTIVE ({activePercentage}%)</p>
                 </div>
-                <p className="facility-description">{category.description}</p>
-                <Link to="/facilities/view" className="facility-btn">
-                  View Details
-                </Link>
-              </article>
-            ))}
+                <div>
+                  <span className="fac-legend-dot fac-legend-out" />
+                  <p>OUT_OF_SERVICE ({outOfServicePercentage}%)</p>
+                </div>
+              </div>
+            </article>
+          </section>
+
+          <section className="fac-action-wrap" aria-label="Primary facilities action">
+            <article className="fac-action-card">
+              <h2>Explore All Facilities</h2>
+              <p>Browse all available campus facilities</p>
+              <button type="button" className="facility-btn facility-btn-primary" onClick={() => navigate("/view-facilities")}>
+                Explore All
+              </button>
+            </article>
           </section>
         </div>
       </main>

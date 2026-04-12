@@ -52,7 +52,7 @@ export default function FacilityDetails() {
               <button
                 type="button"
                 className="fd-back-btn"
-                onClick={() => navigate("/facilities/view")}
+                onClick={() => navigate("/view-facilities")}
               >
                 Back to Facilities List
               </button>
@@ -66,7 +66,7 @@ export default function FacilityDetails() {
               <button
                 type="button"
                 className="fd-back-btn"
-                onClick={() => navigate("/facilities/view")}
+                onClick={() => navigate("/view-facilities")}
               >
                 Back to Facilities List
               </button>

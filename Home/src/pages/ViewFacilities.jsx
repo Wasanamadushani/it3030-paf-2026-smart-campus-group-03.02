@@ -1,8 +1,10 @@
 import { useEffect, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import "../styles/viewFacilities.css";
+
+const AVAILABLE_TYPES = ["Room", "Lab", "Equipment"];
 
 const STATIC_FACILITIES_DATA = [
   {
@@ -70,6 +72,7 @@ function getStatusClass(status) {
 export default function ViewFacilities() {
   const role = "ADMIN";
   const navigate = useNavigate();
+  const location = useLocation();
   // TODO: Replace with backend API data
   const [facilities, setFacilities] = useState(STATIC_FACILITIES_DATA);
   const [searchTerm, setSearchTerm] = useState("");
@@ -80,6 +83,17 @@ export default function ViewFacilities() {
     // TODO: Fetch facilities from backend API
     setFacilities(STATIC_FACILITIES_DATA);
   }, []);
+
+  useEffect(() => {
+    const routeType = location.state?.type;
+
+    if (AVAILABLE_TYPES.includes(routeType)) {
+      setSelectedType(routeType);
+      return;
+    }
+
+    setSelectedType("ALL");
+  }, [location.state]);
 
   function handleViewDetails(facility) {
     navigate("/facility-details", { state: facility });
