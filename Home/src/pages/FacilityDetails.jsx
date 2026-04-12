@@ -49,6 +49,15 @@ export default function FacilityDetails() {
                 </article>
               </div>
 
+              {/* TODO: Booking functionality will be implemented by Booking module */}
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={() => navigate("/booking", { state: facility })}
+              >
+                Book Now
+              </button>
+
               <button
                 type="button"
                 className="fd-back-btn"
