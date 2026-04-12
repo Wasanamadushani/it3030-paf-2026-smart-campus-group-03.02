@@ -70,8 +70,11 @@ function getStatusClass(status) {
 export default function ViewFacilities() {
   const role = "ADMIN";
   const navigate = useNavigate();
-  // TODO: Replace static data with API call from backend
+  // TODO: Replace with backend API data
   const [facilities, setFacilities] = useState(STATIC_FACILITIES_DATA);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedType, setSelectedType] = useState("ALL");
+  const [selectedStatus, setSelectedStatus] = useState("ALL");
 
   useEffect(() => {
     // TODO: Fetch facilities from backend API
@@ -81,6 +84,19 @@ export default function ViewFacilities() {
   function handleViewDetails(facility) {
     navigate("/facility-details", { state: facility });
   }
+
+  const filteredFacilities = facilities.filter((facility) => {
+    const normalizedSearchTerm = searchTerm.trim().toLowerCase();
+    const matchesSearch =
+      normalizedSearchTerm.length === 0 ||
+      facility.name.toLowerCase().includes(normalizedSearchTerm) ||
+      facility.location.toLowerCase().includes(normalizedSearchTerm);
+
+    const matchesType = selectedType === "ALL" || facility.type === selectedType;
+    const matchesStatus = selectedStatus === "ALL" || facility.status === selectedStatus;
+
+    return matchesSearch && matchesType && matchesStatus;
+  });
 
   return (
     <div className="app-shell vf-page-shell">
@@ -98,8 +114,41 @@ export default function ViewFacilities() {
             </Link>
           </header>
 
+          <section className="vf-filters" aria-label="Search and filter facilities">
+            <input
+              type="text"
+              className="vf-search-input"
+              placeholder="Search by facility name or location"
+              value={searchTerm}
+              onChange={(event) => setSearchTerm(event.target.value)}
+            />
+
+            <select
+              className="vf-filter-select"
+              value={selectedType}
+              onChange={(event) => setSelectedType(event.target.value)}
+              aria-label="Filter by type"
+            >
+              <option value="ALL">All Types</option>
+              <option value="Room">Room</option>
+              <option value="Lab">Lab</option>
+              <option value="Equipment">Equipment</option>
+            </select>
+
+            <select
+              className="vf-filter-select"
+              value={selectedStatus}
+              onChange={(event) => setSelectedStatus(event.target.value)}
+              aria-label="Filter by status"
+            >
+              <option value="ALL">All Statuses</option>
+              <option value="ACTIVE">ACTIVE</option>
+              <option value="OUT_OF_SERVICE">OUT_OF_SERVICE</option>
+            </select>
+          </section>
+
           <section className="vf-grid" aria-label="Available facility list">
-            {facilities.map((facility) => (
+            {filteredFacilities.map((facility) => (
               <article key={`${facility.name}-${facility.location}`} className="vf-card">
                 <div className="vf-card-top">
                   <h2>{facility.name}</h2>
@@ -130,6 +179,10 @@ export default function ViewFacilities() {
                 </button>
               </article>
             ))}
+
+            {filteredFacilities.length === 0 && (
+              <p className="vf-no-results">No facilities found</p>
+            )}
           </section>
         </div>
       </main>
