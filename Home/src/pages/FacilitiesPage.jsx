@@ -1,5 +1,6 @@
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
+import CalendarView from "../components/CalendarView";
 import { useNavigate } from "react-router-dom";
 import "../styles/facilities.css";
 
@@ -81,58 +82,66 @@ export default function FacilitiesPage() {
             </article>
           </section>
 
-          <section className="fac-visual-grid" aria-label="Facilities visual overview">
-            <article className="fac-visual-card">
-              <h2>Facilities by Type</h2>
-              <div className="fac-type-list">
-                {facilitiesByType.map((item) => (
-                  <div key={item.type} className="fac-type-row">
-                    <div className="fac-type-head">
-                      <span>{item.type}</span>
-                      <strong>{item.count}</strong>
-                    </div>
-                    <div className="fac-type-track">
-                      <div
-                        className="fac-type-fill"
-                        style={{ width: `${(item.count / maxTypeCount) * 100}%` }}
-                      />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </article>
-
-            <article className="fac-visual-card">
-              <h2>Status Distribution</h2>
-              <div className="fac-status-track" aria-label="Status distribution bar">
-                <div className="fac-status-active" style={{ width: `${activePercentage}%` }} />
-                <div
-                  className="fac-status-out"
-                  style={{ width: `${outOfServicePercentage}%` }}
-                />
-              </div>
-
-              <div className="fac-status-legend">
-                <div>
-                  <span className="fac-legend-dot fac-legend-active" />
-                  <p>ACTIVE ({activePercentage}%)</p>
-                </div>
-                <div>
-                  <span className="fac-legend-dot fac-legend-out" />
-                  <p>OUT_OF_SERVICE ({outOfServicePercentage}%)</p>
-                </div>
-              </div>
-            </article>
-          </section>
-
           <section className="fac-action-wrap" aria-label="Primary facilities action">
             <article className="fac-action-card">
-              <h2>Explore All Facilities</h2>
-              <p>Browse all available campus facilities</p>
+              <div className="fac-action-content">
+                <h2>Explore All Facilities</h2>
+                <p>Browse all available campus facilities</p>
+              </div>
               <button type="button" className="facility-btn facility-btn-primary" onClick={() => navigate("/view-facilities")}>
                 Explore All
               </button>
             </article>
+          </section>
+
+          <section className="fac-main-grid" aria-label="Facilities visual overview and availability">
+            <div className="fac-main-left">
+              <article className="fac-visual-card">
+                <h2>Facilities by Type</h2>
+                <div className="fac-type-list">
+                  {facilitiesByType.map((item) => (
+                    <div key={item.type} className="fac-type-row">
+                      <div className="fac-type-head">
+                        <span>{item.type}</span>
+                        <strong>{item.count}</strong>
+                      </div>
+                      <div className="fac-type-track">
+                        <div
+                          className="fac-type-fill"
+                          style={{ width: `${(item.count / maxTypeCount) * 100}%` }}
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </article>
+
+              <article className="fac-visual-card">
+                <h2>Status Distribution</h2>
+                <div className="fac-status-track" aria-label="Status distribution bar">
+                  <div className="fac-status-active" style={{ width: `${activePercentage}%` }} />
+                  <div
+                    className="fac-status-out"
+                    style={{ width: `${outOfServicePercentage}%` }}
+                  />
+                </div>
+
+                <div className="fac-status-legend">
+                  <div>
+                    <span className="fac-legend-dot fac-legend-active" />
+                    <p>ACTIVE ({activePercentage}%)</p>
+                  </div>
+                  <div>
+                    <span className="fac-legend-dot fac-legend-out" />
+                    <p>OUT_OF_SERVICE ({outOfServicePercentage}%)</p>
+                  </div>
+                </div>
+              </article>
+            </div>
+
+            <div className="fac-main-right">
+              <CalendarView title="Availability Calendar" />
+            </div>
           </section>
         </div>
       </main>

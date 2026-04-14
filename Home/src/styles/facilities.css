@@ -39,12 +39,19 @@
   grid-template-columns: 1fr;
 }
 
-.fac-stat-card {
+.fac-stat-card,
+.fac-visual-card,
+.fac-calendar-card,
+.fac-action-card {
   background: #ffffff;
   border: 1px solid #e5e7eb;
-  border-radius: 14px;
+  border-radius: 16px;
+  padding: 1.2rem;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.08);
+}
+
+.fac-stat-card {
   padding: 1rem 1.1rem;
-  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.06);
 }
 
 .fac-stat-card p {
@@ -61,19 +68,24 @@
   line-height: 1;
 }
 
-.fac-visual-grid {
-  margin-top: 1rem;
+.fac-main-grid {
+  margin-top: 1.25rem;
   display: grid;
   gap: 1rem;
   grid-template-columns: 1fr;
 }
 
+.fac-main-left {
+  display: grid;
+  gap: 1rem;
+}
+
+.fac-main-right {
+  display: flex;
+}
+
 .fac-visual-card {
-  background: #ffffff;
-  border: 1px solid #e5e7eb;
-  border-radius: 14px;
   padding: 1rem 1.1rem;
-  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.06);
 }
 
 .fac-visual-card h2 {
@@ -173,15 +185,86 @@
 }
 
 .fac-action-wrap {
-  margin-top: 1rem;
+  margin-top: 1.15rem;
+}
+
+.fac-calendar-card {
+  width: 100%;
+}
+
+.fac-calendar-card h2 {
+  margin: 0;
+  color: #0f172a;
+  font-size: 1.15rem;
+  text-align: left;
+}
+
+.fac-calendar-subtitle {
+  margin: 0.45rem 0 0;
+  text-align: left;
+  color: #475569;
+  line-height: 1.55;
+}
+
+.fac-calendar-widget {
+  margin-top: 0.95rem;
+  display: flex;
+  justify-content: center;
+}
+
+.fac-calendar-widget .react-calendar {
+  width: 100%;
+  max-width: 100%;
+  border: 1px solid #dbe4f4;
+  border-radius: 12px;
+  padding: 0.55rem;
+  background: #f8fbff;
+}
+
+.fac-calendar-widget .react-calendar__navigation button {
+  color: #0f172a;
+  min-width: 40px;
+  background: transparent;
+  border-radius: 8px;
+}
+
+.fac-calendar-widget .react-calendar__tile {
+  border-radius: 8px;
+}
+
+.fac-calendar-widget .react-calendar__tile--active {
+  background: #1d4ed8;
+  color: #ffffff;
+}
+
+.fac-calendar-widget .react-calendar__tile--now {
+  background: #dbeafe;
+}
+
+.fac-calendar-selected {
+  margin: 0.85rem 0 0;
+  text-align: left;
+  color: #334155;
+  font-size: 0.95rem;
+}
+
+.fac-calendar-selected strong {
+  color: #0f172a;
 }
 
 .fac-action-card {
-  background: linear-gradient(135deg, #ffffff, #f8fbff);
-  border: 1px solid #dbe4f4;
-  border-radius: 14px;
-  padding: 1.2rem;
-  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.9rem 1rem;
+  background: linear-gradient(135deg, #ffffff, #f6f9ff);
+  border-color: #dbe4f4;
+  box-shadow: 0 14px 30px rgba(29, 78, 216, 0.12);
+}
+
+.fac-action-content {
+  max-width: 680px;
 }
 
 .fac-action-card h2 {
@@ -197,7 +280,7 @@
 }
 
 .facility-btn {
-  margin-top: 1rem;
+  margin-top: 0;
   border: 1px solid #cbd5e1;
   border-radius: 10px;
   background: #f8fafc;
@@ -230,7 +313,24 @@
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
-  .fac-visual-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+  .fac-main-grid {
+    gap: 1.2rem;
+  }
+}
+
+@media (max-width: 767px) {
+  .fac-action-card {
+    align-items: flex-start;
+  }
+
+  .facility-btn {
+    width: 100%;
+  }
+}
+
+@media (min-width: 992px) {
+  .fac-main-grid {
+    grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
+    align-items: start;
   }
 }
