@@ -32,6 +32,33 @@
   font-size: 1rem;
 }
 
+.fac-role-switch {
+  margin: 1rem auto 0;
+  max-width: 760px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.7rem 0.9rem;
+}
+
+.fac-role-switch p {
+  margin: 0;
+  color: #334155;
+  font-size: 0.93rem;
+}
+
+.fac-role-switch p strong {
+  color: #0f172a;
+}
+
+.fac-role-switch-actions {
+  display: flex;
+  gap: 0.55rem;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
 .fac-stats-grid {
   margin-top: 1.6rem;
   display: grid;
@@ -267,6 +294,13 @@
   max-width: 680px;
 }
 
+.fac-action-buttons {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  flex-wrap: wrap;
+}
+
 .fac-action-card h2 {
   margin: 0;
   color: #0f172a;
@@ -294,6 +328,11 @@
   background: #f1f5f9;
 }
 
+.facility-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 .facility-btn-primary {
   background: #1d4ed8;
   border-color: #1d4ed8;
@@ -302,6 +341,16 @@
 
 .facility-btn-primary:hover {
   background: #1e40af;
+}
+
+.facility-btn-secondary {
+  border-color: #cbd5e1;
+  background: #ffffff;
+  color: #0f172a;
+}
+
+.facility-btn-secondary:hover {
+  background: #f1f5f9;
 }
 
 @media (min-width: 768px) {
@@ -321,6 +370,10 @@
 @media (max-width: 767px) {
   .fac-action-card {
     align-items: flex-start;
+  }
+
+  .fac-action-buttons {
+    width: 100%;
   }
 
   .facility-btn {

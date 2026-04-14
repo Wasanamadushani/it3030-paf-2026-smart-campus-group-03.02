@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import CalendarView from "../components/CalendarView";
@@ -38,7 +39,13 @@ const FACILITY_SNAPSHOT = [
 ];
 
 export default function FacilitiesPage() {
-  const role = "ADMIN";
+  const [userRole, setUserRole] = useState(() => {
+    const storedRole = localStorage.getItem("sch.mockRole");
+    return storedRole === "ADMIN" ? "ADMIN" : "USER";
+  });
+  const isAdmin = userRole === "ADMIN";
+  // TODO: Remove temporary role switch after real authentication integration
+  const role = userRole;
   const navigate = useNavigate();
   const totalFacilities = FACILITY_SNAPSHOT.length;
   const activeFacilities = FACILITY_SNAPSHOT.filter((facility) => facility.status === "ACTIVE").length;
@@ -53,6 +60,10 @@ export default function FacilitiesPage() {
   const activePercentage = Math.round((activeFacilities / totalFacilities) * 100);
   const outOfServicePercentage = 100 - activePercentage;
 
+  useEffect(() => {
+    localStorage.setItem("sch.mockRole", userRole);
+  }, [userRole]);
+
   return (
     <div className="app-shell facilities-page-shell">
       <Navbar role={role} />
@@ -65,6 +76,31 @@ export default function FacilitiesPage() {
               Get a quick overview of facilities status, usage distribution, and access the complete
               facilities list from one place.
             </p>
+
+            <div className="fac-role-switch" aria-label="Temporary role switcher">
+              <p>
+                Current Role: <strong>{userRole}</strong>
+              </p>
+
+              <div className="fac-role-switch-actions">
+                <button
+                  type="button"
+                  className="facility-btn facility-btn-secondary"
+                  onClick={() => setUserRole("ADMIN")}
+                  disabled={userRole === "ADMIN"}
+                >
+                  Switch to Admin
+                </button>
+                <button
+                  type="button"
+                  className="facility-btn facility-btn-secondary"
+                  onClick={() => setUserRole("USER")}
+                  disabled={userRole === "USER"}
+                >
+                  Switch to User
+                </button>
+              </div>
+            </div>
           </header>
 
           <section className="fac-stats-grid" aria-label="Facility summary statistics">
@@ -86,11 +122,28 @@ export default function FacilitiesPage() {
             <article className="fac-action-card">
               <div className="fac-action-content">
                 <h2>Explore All Facilities</h2>
-                <p>Browse all available campus facilities</p>
+                <p>Browse all available campus facilities or open the admin management view.</p>
               </div>
-              <button type="button" className="facility-btn facility-btn-primary" onClick={() => navigate("/view-facilities")}>
-                Explore All
-              </button>
+
+              <div className="fac-action-buttons">
+                <button
+                  type="button"
+                  className="facility-btn facility-btn-primary"
+                  onClick={() => navigate("/view-facilities")}
+                >
+                  Explore All
+                </button>
+
+                {isAdmin && (
+                  <button
+                    type="button"
+                    className="facility-btn facility-btn-secondary"
+                    onClick={() => navigate("/manage-facilities")}
+                  >
+                    Manage Facilities
+                  </button>
+                )}
+              </div>
             </article>
           </section>
 
