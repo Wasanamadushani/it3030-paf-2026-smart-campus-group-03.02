@@ -5,7 +5,7 @@ const AUTH_STORAGE_KEY = "sch.currentUser";
 
 const menuItems = [
   { label: "Home", to: "/" },
-  { label: "Resources", to: "/facilities" },
+  { label: "Resources" }, // remove "to"
   { label: "Bookings", href: "#" },
   { label: "Tickets", href: "#" },
   { label: "Notifications", href: "#" },
@@ -309,6 +309,28 @@ export default function Navbar({ userName = "Alex Silva", role = "USER" }) {
               </button>
             );
           }
+
+
+
+          if (item.label === "Resources") {
+            const targetPath =
+              currentUser?.role === "ADMIN" ? "/admin/facilities" : "/facilities";
+
+            return (
+              <NavLink
+                key={item.label}
+                to={targetPath}
+                className={({ isActive }) => (isActive ? "nav-link active" : "nav-link")}
+                onClick={() => setIsMenuOpen(false)}
+              >
+                {item.label}
+              </NavLink>
+            );
+          }
+
+
+
+
 
           if (item.to) {
             return (

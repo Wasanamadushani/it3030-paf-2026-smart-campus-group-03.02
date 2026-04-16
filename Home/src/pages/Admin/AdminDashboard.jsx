@@ -12,7 +12,6 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import AdminSidebarLayout from "../../components/AdminSidebarLayout";
 import "../../styles/adminDashboard.css";
 import "react-calendar/dist/Calendar.css";
 
@@ -135,11 +134,7 @@ export default function AdminDashboard() {
   }
 
   return (
-    <AdminSidebarLayout
-      title="Admin Dashboard"
-      subtitle="Overview and insights for facilities analytics and monitoring."
-    >
-      <div className="admin-dashboard-container">
+    <div className="admin-dashboard-container">
         <section className="admin-stats-grid" aria-label="Admin facility summary">
           <article className="admin-card admin-stat-card">
             <p>Total Facilities</p>
@@ -263,6 +258,5 @@ export default function AdminDashboard() {
           </div>
         </section>
       </div>
-    </AdminSidebarLayout>
   );
 }

@@ -1,10 +1,10 @@
 import { useEffect, useState } from "react";
-import { Link, useLocation, useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import "../styles/viewFacilities.css";
 
-const AVAILABLE_TYPES = ["Room", "Lab", "Equipment"];
+const FACILITY_TYPE_OPTIONS = ["Room", "Lab", "Lecture Hall", "Equipment"];
 
 const STATIC_FACILITIES_DATA = [
   {
@@ -70,7 +70,7 @@ function getStatusClass(status) {
 }
 
 export default function ViewFacilities() {
-  const role = "ADMIN";
+  const role = "USER";
   const navigate = useNavigate();
   const location = useLocation();
   // TODO: Replace with backend API data
@@ -87,7 +87,7 @@ export default function ViewFacilities() {
   useEffect(() => {
     const routeType = location.state?.type;
 
-    if (AVAILABLE_TYPES.includes(routeType)) {
+    if (FACILITY_TYPE_OPTIONS.includes(routeType)) {
       setSelectedType(routeType);
       return;
     }
@@ -123,9 +123,6 @@ export default function ViewFacilities() {
             <p>
               Explore campus facilities and resources currently listed in the catalogue.
             </p>
-            <Link to="/facilities" className="vf-back-link">
-              Back to Facilities Catalogue
-            </Link>
           </header>
 
           <section className="vf-filters" aria-label="Search and filter facilities">
@@ -144,9 +141,11 @@ export default function ViewFacilities() {
               aria-label="Filter by type"
             >
               <option value="ALL">All Types</option>
-              <option value="Room">Room</option>
-              <option value="Lab">Lab</option>
-              <option value="Equipment">Equipment</option>
+              {FACILITY_TYPE_OPTIONS.map((type) => (
+                <option key={type} value={type}>
+                  {type}
+                </option>
+              ))}
             </select>
 
             <select

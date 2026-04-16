@@ -36,6 +36,11 @@
   align-items: center;
   gap: 0.65rem;
   padding: 0.62rem 0.65rem;
+  width: 100%;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
   border-radius: 10px;
   color: #cbd5e1;
   text-decoration: none;

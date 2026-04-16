@@ -55,6 +55,12 @@
   font-size: 1.12rem;
 }
 
+.mf-form-subtitle {
+  margin: 0.45rem 0 0;
+  color: #475569;
+  font-size: 0.9rem;
+}
+
 .mf-form-grid {
   margin-top: 0.95rem;
   display: grid;
@@ -84,6 +90,39 @@
 .mf-form-grid select:focus {
   outline: 2px solid #bfdbfe;
   border-color: #2563eb;
+}
+
+.mf-input-error {
+  border-color: #ef4444 !important;
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.16);
+}
+
+.mf-field-error {
+  margin: 0;
+  color: #dc2626;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.mf-field-hint {
+  margin: 0;
+  color: #64748b;
+  font-size: 0.78rem;
+}
+
+.mf-form-success {
+  margin: 0;
+  padding: 0.7rem 0.9rem;
+  border: 1px solid #86efac;
+  border-radius: 10px;
+  color: #166534;
+  background: #f0fdf4;
+  font-size: 0.86rem;
+  font-weight: 600;
+}
+
+.mf-form-field-full {
+  grid-column: 1 / -1;
 }
 
 .mf-form-actions {
