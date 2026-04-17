@@ -1,5 +1,12 @@
-import { useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import "../../styles/manageFacilities.css";
+import {
+  addFacility,
+  getFacilities,
+  removeFacility,
+  subscribeFacilities,
+  updateFacility,
+} from "../../data/facilitiesStore";
 
 const FACILITY_TYPE_OPTIONS = ["Room", "Lab", "Lecture Hall", "Equipment"];
 
@@ -11,42 +18,6 @@ const BUILDING_FLOOR_MAP = {
 };
 
 const NEW_BUILDING_BLOCK_OPTIONS = ["F Block (Lecture Halls)", "G Block (Labs)"];
-
-const INITIAL_FACILITIES = [
-  {
-    id: 1,
-    name: "Lecture Hall A1",
-    type: "Lecture Hall",
-    building: "Main",
-    floor: 1,
-    block: "",
-    location: "Main Building - Floor 1",
-    capacity: 220,
-    status: "ACTIVE",
-  },
-  {
-    id: 2,
-    name: "Advanced Networking Lab",
-    type: "Lab",
-    building: "Engineering",
-    floor: 3,
-    block: "",
-    location: "Engineering Building - Floor 3",
-    capacity: 40,
-    status: "ACTIVE",
-  },
-  {
-    id: 3,
-    name: "Portable PA System",
-    type: "Equipment",
-    building: "Business",
-    floor: 1,
-    block: "",
-    location: "Business Building - Floor 1",
-    capacity: 1,
-    status: "OUT_OF_SERVICE",
-  },
-];
 
 const EMPTY_FORM = {
   name: "",
@@ -102,12 +73,17 @@ function buildLocation(building, floor, block) {
 export default function ManageFacilities() {
   // TODO: Connect to backend and role-based authentication
 
-  const [facilities, setFacilities] = useState(INITIAL_FACILITIES);
+  const [facilities, setFacilities] = useState(() => getFacilities());
   const [formData, setFormData] = useState(EMPTY_FORM);
   const [formErrors, setFormErrors] = useState({});
   const [successMessage, setSuccessMessage] = useState("");
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingFacilityId, setEditingFacilityId] = useState(null);
+
+  useEffect(() => {
+    setFacilities(getFacilities());
+    return subscribeFacilities(setFacilities);
+  }, []);
 
   const isEditing = editingFacilityId !== null;
   const isNewBuilding = formData.building === "New";
@@ -117,10 +93,6 @@ export default function ManageFacilities() {
   const capacityLimit = getCapacityLimitByType(formData.type);
   const capacityErrorMessage = getCapacityLimitError(formData.type);
   const formattedLocation = buildLocation(formData.building, formData.floor, formData.block);
-
-  const nextFacilityId = useMemo(() => {
-    return facilities.reduce((maxId, facility) => Math.max(maxId, facility.id), 0) + 1;
-  }, [facilities]);
 
   function setFormFieldError(field, value) {
     setFormErrors((prev) => {
@@ -266,7 +238,7 @@ export default function ManageFacilities() {
   }
 
   function handleDeleteFacility(id) {
-    setFacilities((prev) => prev.filter((facility) => facility.id !== id));
+    setFacilities(removeFacility(id));
 
     if (editingFacilityId === id) {
       setEditingFacilityId(null);
@@ -301,17 +273,9 @@ export default function ManageFacilities() {
     };
 
     if (isEditing) {
-      setFacilities((prev) =>
-        prev.map((facility) => {
-          if (facility.id !== editingFacilityId) {
-            return facility;
-          }
-
-          return { ...facility, ...payload };
-        })
-      );
+      setFacilities(updateFacility(editingFacilityId, payload));
     } else {
-      setFacilities((prev) => [...prev, { id: nextFacilityId, ...payload }]);
+      setFacilities(addFacility(payload));
     }
 
     setEditingFacilityId(null);

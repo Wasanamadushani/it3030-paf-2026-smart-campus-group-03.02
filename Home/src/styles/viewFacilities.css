@@ -29,12 +29,126 @@
   line-height: 1.6;
 }
 
+.vf-explore-all-btn {
+  margin-top: 1rem;
+  border: 1px solid #0f172a;
+  border-radius: 10px;
+  background: #0f172a;
+  color: #ffffff;
+  padding: 0.58rem 0.95rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.vf-explore-all-btn:hover {
+  background: #1e293b;
+}
+
 .vf-back-link {
   display: inline-block;
   margin-top: 0.95rem;
   font-weight: 600;
   color: #1d4ed8;
   text-decoration: none;
+}
+
+.vf-add-form-card {
+  margin-top: 1.35rem;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  padding: 1rem;
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.06);
+}
+
+.vf-add-form-card h2 {
+  margin: 0;
+  color: #0f172a;
+  font-size: 1.1rem;
+}
+
+.vf-add-form-card p {
+  margin: 0.55rem 0 0;
+  color: #475569;
+  line-height: 1.55;
+}
+
+.vf-add-form {
+  margin-top: 0.95rem;
+}
+
+.vf-form-grid {
+  display: grid;
+  gap: 0.85rem;
+  grid-template-columns: 1fr;
+}
+
+.vf-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.36rem;
+}
+
+.vf-field label {
+  color: #334155;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.vf-field-control {
+  width: 100%;
+  border: 1px solid #d1d5db;
+  border-radius: 10px;
+  padding: 0.62rem 0.75rem;
+  background: #ffffff;
+  color: #111827;
+  font-size: 0.92rem;
+}
+
+.vf-field-control:focus {
+  outline: none;
+  border-color: #93c5fd;
+  box-shadow: 0 0 0 3px rgba(147, 197, 253, 0.25);
+}
+
+.vf-input-error {
+  border-color: #ef4444;
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.18);
+}
+
+.vf-field-error {
+  margin: 0;
+  color: #dc2626;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.vf-field-hint {
+  margin: 0;
+  color: #64748b;
+  font-size: 0.78rem;
+}
+
+.vf-form-success {
+  margin: 0.9rem 0 0;
+  color: #166534;
+  font-size: 0.86rem;
+  font-weight: 600;
+}
+
+.vf-add-btn {
+  margin-top: 0.95rem;
+  border: 1px solid #1d4ed8;
+  border-radius: 10px;
+  background: #1d4ed8;
+  color: #ffffff;
+  padding: 0.58rem 0.95rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.vf-add-btn:hover {
+  background: #1e40af;
 }
 
 .vf-filters {
@@ -159,6 +273,14 @@
 }
 
 @media (min-width: 768px) {
+  .vf-form-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .vf-field-full {
+    grid-column: 1 / -1;
+  }
+
   .vf-filters {
     grid-template-columns: 2fr 1fr 1fr;
     align-items: center;
@@ -175,3 +297,9 @@
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
+
+
+
+
+
+
