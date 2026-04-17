@@ -10,7 +10,7 @@ function getStatusClass(status) {
 }
 
 export default function FacilityDetails() {
-  const role = "ADMIN";
+  const role = "USER";
   const navigate = useNavigate();
   const { state: facility } = useLocation();
 
@@ -61,7 +61,7 @@ export default function FacilityDetails() {
               <button
                 type="button"
                 className="fd-back-btn"
-                onClick={() => navigate("/view-facilities")}
+                onClick={() => navigate("/facilities")}
               >
                 Back to Facilities List
               </button>
@@ -75,7 +75,7 @@ export default function FacilityDetails() {
               <button
                 type="button"
                 className="fd-back-btn"
-                onClick={() => navigate("/view-facilities")}
+                onClick={() => navigate("/facilities")}
               >
                 Back to Facilities List
               </button>

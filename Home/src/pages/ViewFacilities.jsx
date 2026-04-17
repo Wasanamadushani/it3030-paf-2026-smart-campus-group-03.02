@@ -1,93 +1,34 @@
 import { useEffect, useState } from "react";
-import { Link, useLocation, useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import "../styles/viewFacilities.css";
+import { getFacilities, subscribeFacilities } from "../data/facilitiesStore";
 
-const AVAILABLE_TYPES = ["Room", "Lab", "Equipment"];
-
-const STATIC_FACILITIES_DATA = [
-  {
-    name: "Lecture Hall A1",
-    type: "Room",
-    location: "Faculty of Computing - Block A",
-    capacity: 220,
-    status: "ACTIVE",
-  },
-  {
-    name: "Advanced Networking Lab",
-    type: "Lab",
-    location: "Engineering Complex - Level 3",
-    capacity: 40,
-    status: "ACTIVE",
-  },
-  {
-    name: "Meeting Room Orion",
-    type: "Room",
-    location: "Admin Building - Level 2",
-    capacity: 18,
-    status: "OUT_OF_SERVICE",
-  },
-  {
-    name: "Portable PA System",
-    type: "Equipment",
-    location: "Equipment Store - Sports Wing",
-    capacity: 1,
-    status: "ACTIVE",
-  },
-  {
-    name: "Software Engineering Lab",
-    type: "Lab",
-    location: "Faculty of Computing - Block C",
-    capacity: 55,
-    status: "ACTIVE",
-  },
-  {
-    name: "Seminar Room S2",
-    type: "Room",
-    location: "Business School - Level 1",
-    capacity: 65,
-    status: "OUT_OF_SERVICE",
-  },
-  {
-    name: "Projector Kit PX-400",
-    type: "Equipment",
-    location: "Library Resource Counter",
-    capacity: 1,
-    status: "ACTIVE",
-  },
-  {
-    name: "Innovation Lab",
-    type: "Lab",
-    location: "Research Center - Ground Floor",
-    capacity: 32,
-    status: "ACTIVE",
-  },
-];
+const FACILITY_TYPE_OPTIONS = ["Room", "Lab", "Lecture Hall", "Equipment"];
 
 function getStatusClass(status) {
   return status === "ACTIVE" ? "vf-status vf-status-active" : "vf-status vf-status-off";
 }
 
 export default function ViewFacilities() {
-  const role = "ADMIN";
+  const role = "USER";
   const navigate = useNavigate();
   const location = useLocation();
-  // TODO: Replace with backend API data
-  const [facilities, setFacilities] = useState(STATIC_FACILITIES_DATA);
+  const [facilities, setFacilities] = useState(() => getFacilities());
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedType, setSelectedType] = useState("ALL");
   const [selectedStatus, setSelectedStatus] = useState("ALL");
 
   useEffect(() => {
-    // TODO: Fetch facilities from backend API
-    setFacilities(STATIC_FACILITIES_DATA);
+    setFacilities(getFacilities());
+    return subscribeFacilities(setFacilities);
   }, []);
 
   useEffect(() => {
     const routeType = location.state?.type;
 
-    if (AVAILABLE_TYPES.includes(routeType)) {
+    if (FACILITY_TYPE_OPTIONS.includes(routeType)) {
       setSelectedType(routeType);
       return;
     }
@@ -97,6 +38,19 @@ export default function ViewFacilities() {
 
   function handleViewDetails(facility) {
     navigate("/facility-details", { state: facility });
+  }
+
+  // function handleExploreAllFacilities() {
+  //   alert("clicked");
+  //   navigate("/facilities");
+  // }
+  function handleExploreAllFacilities() {
+    setSearchTerm("");
+    setSelectedType("ALL");
+    setSelectedStatus("ALL");
+    navigate("/facilities");
+
+    setFacilities([...getFacilities()]);
   }
 
   const filteredFacilities = facilities.filter((facility) => {
@@ -123,9 +77,13 @@ export default function ViewFacilities() {
             <p>
               Explore campus facilities and resources currently listed in the catalogue.
             </p>
-            <Link to="/facilities" className="vf-back-link">
-              Back to Facilities Catalogue
-            </Link>
+            <button
+              type="button"
+              className="vf-explore-all-btn"
+              onClick={handleExploreAllFacilities}
+            >
+              Explore All
+            </button>
           </header>
 
           <section className="vf-filters" aria-label="Search and filter facilities">
@@ -144,9 +102,11 @@ export default function ViewFacilities() {
               aria-label="Filter by type"
             >
               <option value="ALL">All Types</option>
-              <option value="Room">Room</option>
-              <option value="Lab">Lab</option>
-              <option value="Equipment">Equipment</option>
+              {FACILITY_TYPE_OPTIONS.map((type) => (
+                <option key={type} value={type}>
+                  {type}
+                </option>
+              ))}
             </select>
 
             <select
