@@ -1,44 +1,31 @@
 package com.paf.backend.entity;
 
-import jakarta.persistence.*;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.mapping.Document;
 import java.time.LocalDateTime;
 
-@Entity
-@Table(name = "tickets")
+@Document(collection = "tickets")
 public class Ticket {
     
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    private String id;
     
-    @Column(nullable = false)
     private String studentId;
     
-    @Column(nullable = false)
     private String title;
     
-    @Column(nullable = false, columnDefinition = "TEXT")
     private String description;
     
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
     private Category category;
     
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
     private Priority priority;
     
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
     private Status status;
     
-    @Column(nullable = false)
     private LocalDateTime createdAt;
     
-    @Column
     private LocalDateTime updatedAt;
     
-    @Column
     private String adminComments;
     
     // Enums
@@ -80,11 +67,11 @@ public class Ticket {
     }
     
     // Getters and Setters
-    public Long getId() {
+    public String getId() {
         return id;
     }
     
-    public void setId(Long id) {
+    public void setId(String id) {
         this.id = id;
     }
     

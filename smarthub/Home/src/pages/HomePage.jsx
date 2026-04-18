@@ -1,4 +1,3 @@
-import Navbar from "../components/Navbar";
 import HeroSection from "../components/HeroSection";
 import QuickActions from "../components/QuickActions";
 import FeaturesSection from "../components/FeaturesSection";
@@ -11,7 +10,6 @@ export default function HomePage() {
 
   return (
     <div className="app-shell">
-      <Navbar role={role} />
       <main className="main-content">
         <HeroSection />
         <QuickActions role={role} />

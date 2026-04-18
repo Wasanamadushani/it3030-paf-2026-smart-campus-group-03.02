@@ -38,7 +38,7 @@ public class TicketService {
     }
     
     // Get a specific ticket
-    public Optional<TicketDTO> getTicketById(Long id) {
+    public Optional<TicketDTO> getTicketById(String id) {
         Optional<Ticket> ticket = ticketRepository.findById(id);
         return ticket.map(TicketDTO::new);
     }
@@ -56,7 +56,7 @@ public class TicketService {
     }
     
     // Update ticket status
-    public TicketDTO updateTicketStatus(Long id, String status) {
+    public TicketDTO updateTicketStatus(String id, String status) {
         Optional<Ticket> ticketOpt = ticketRepository.findById(id);
         if (ticketOpt.isPresent()) {
             Ticket ticket = ticketOpt.get();
@@ -69,7 +69,7 @@ public class TicketService {
     }
     
     // Add admin comments to ticket
-    public TicketDTO addAdminComments(Long id, String comments) {
+    public TicketDTO addAdminComments(String id, String comments) {
         Optional<Ticket> ticketOpt = ticketRepository.findById(id);
         if (ticketOpt.isPresent()) {
             Ticket ticket = ticketOpt.get();
@@ -82,7 +82,7 @@ public class TicketService {
     }
     
     // Delete ticket
-    public boolean deleteTicket(Long id) {
+    public boolean deleteTicket(String id) {
         if (ticketRepository.existsById(id)) {
             ticketRepository.deleteById(id);
             return true;

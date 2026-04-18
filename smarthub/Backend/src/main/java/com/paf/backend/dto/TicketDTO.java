@@ -4,7 +4,7 @@ import com.paf.backend.entity.Ticket;
 import java.time.LocalDateTime;
 
 public class TicketDTO {
-    private Long id;
+    private String id;
     private String studentId;
     private String title;
     private String description;
@@ -32,11 +32,11 @@ public class TicketDTO {
     }
     
     // Getters and Setters
-    public Long getId() {
+    public String getId() {
         return id;
     }
     
-    public void setId(Long id) {
+    public void setId(String id) {
         this.id = id;
     }
     

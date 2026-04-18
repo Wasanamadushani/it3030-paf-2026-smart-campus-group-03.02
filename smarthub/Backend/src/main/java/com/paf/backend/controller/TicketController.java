@@ -33,7 +33,7 @@ public class TicketController {
     
     // Get a specific ticket
     @GetMapping("/{id}")
-    public ResponseEntity<TicketDTO> getTicketById(@PathVariable Long id) {
+    public ResponseEntity<TicketDTO> getTicketById(@PathVariable String id) {
         Optional<TicketDTO> ticket = ticketService.getTicketById(id);
         return ticket.map(ResponseEntity::ok)
                 .orElseGet(() -> ResponseEntity.notFound().build());
@@ -56,7 +56,7 @@ public class TicketController {
     // Update ticket status
     @PutMapping("/{id}/status")
     public ResponseEntity<TicketDTO> updateTicketStatus(
-            @PathVariable Long id,
+            @PathVariable String id,
             @RequestParam String status) {
         TicketDTO updatedTicket = ticketService.updateTicketStatus(id, status);
         if (updatedTicket != null) {
@@ -68,7 +68,7 @@ public class TicketController {
     // Add admin comments
     @PutMapping("/{id}/comments")
     public ResponseEntity<TicketDTO> addAdminComments(
-            @PathVariable Long id,
+            @PathVariable String id,
             @RequestParam String comments) {
         TicketDTO updatedTicket = ticketService.addAdminComments(id, comments);
         if (updatedTicket != null) {
@@ -79,7 +79,7 @@ public class TicketController {
     
     // Delete ticket
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteTicket(@PathVariable Long id) {
+    public ResponseEntity<Void> deleteTicket(@PathVariable String id) {
         if (ticketService.deleteTicket(id)) {
             return ResponseEntity.noContent().build();
         }
