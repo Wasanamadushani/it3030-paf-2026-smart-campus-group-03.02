@@ -56,29 +56,29 @@ public class TicketService {
     }
     
     // Update ticket status
-    public TicketDTO updateTicketStatus(String id, String status) {
+    public Optional<TicketDTO> updateTicketStatus(String id, String status) {
         Optional<Ticket> ticketOpt = ticketRepository.findById(id);
         if (ticketOpt.isPresent()) {
             Ticket ticket = ticketOpt.get();
             ticket.setStatus(Ticket.Status.valueOf(status));
             ticket.setUpdatedAt(LocalDateTime.now());
             Ticket updatedTicket = ticketRepository.save(ticket);
-            return new TicketDTO(updatedTicket);
+            return Optional.of(new TicketDTO(updatedTicket));
         }
-        return null;
+        return Optional.empty();
     }
     
     // Add admin comments to ticket
-    public TicketDTO addAdminComments(String id, String comments) {
+    public Optional<TicketDTO> addAdminComments(String id, String comments) {
         Optional<Ticket> ticketOpt = ticketRepository.findById(id);
         if (ticketOpt.isPresent()) {
             Ticket ticket = ticketOpt.get();
             ticket.setAdminComments(comments);
             ticket.setUpdatedAt(LocalDateTime.now());
             Ticket updatedTicket = ticketRepository.save(ticket);
-            return new TicketDTO(updatedTicket);
+            return Optional.of(new TicketDTO(updatedTicket));
         }
-        return null;
+        return Optional.empty();
     }
     
     // Delete ticket

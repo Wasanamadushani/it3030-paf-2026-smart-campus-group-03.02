@@ -58,11 +58,9 @@ public class TicketController {
     public ResponseEntity<TicketDTO> updateTicketStatus(
             @PathVariable String id,
             @RequestParam String status) {
-        TicketDTO updatedTicket = ticketService.updateTicketStatus(id, status);
-        if (updatedTicket != null) {
-            return ResponseEntity.ok(updatedTicket);
-        }
-        return ResponseEntity.notFound().build();
+        Optional<TicketDTO> updatedTicket = ticketService.updateTicketStatus(id, status);
+        return updatedTicket.map(ResponseEntity::ok)
+                .orElseGet(() -> ResponseEntity.notFound().build());
     }
     
     // Add admin comments
@@ -70,11 +68,9 @@ public class TicketController {
     public ResponseEntity<TicketDTO> addAdminComments(
             @PathVariable String id,
             @RequestParam String comments) {
-        TicketDTO updatedTicket = ticketService.addAdminComments(id, comments);
-        if (updatedTicket != null) {
-            return ResponseEntity.ok(updatedTicket);
-        }
-        return ResponseEntity.notFound().build();
+        Optional<TicketDTO> updatedTicket = ticketService.addAdminComments(id, comments);
+        return updatedTicket.map(ResponseEntity::ok)
+                .orElseGet(() -> ResponseEntity.notFound().build());
     }
     
     // Delete ticket
