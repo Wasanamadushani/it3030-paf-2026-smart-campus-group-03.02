@@ -1,4 +1,4 @@
-import { useLocation, useNavigate } from "react-router-dom";
+import { useLocation, useNavigate, Link } from "react-router-dom";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import "../styles/facilityDetails.css";
@@ -13,8 +13,6 @@ export default function FacilityDetails() {
   const role = "ADMIN";
   const navigate = useNavigate();
   const { state: facility } = useLocation();
-
-  // TODO: Replace with API data from backend
 
   return (
     <div className="app-shell fd-page-shell">
@@ -49,13 +47,28 @@ export default function FacilityDetails() {
                 </article>
               </div>
 
-              <button
-                type="button"
-                className="fd-back-btn"
-                onClick={() => navigate("/facilities/view")}
-              >
-                Back to Facilities List
-              </button>
+              <div style={{ display: "flex", gap: "1rem", marginTop: "1rem" }}>
+                <button
+                  type="button"
+                  className="fd-back-btn"
+                  onClick={() => navigate("/facilities/view")}
+                >
+                  Back to Facilities List
+                </button>
+                {facility.status === "ACTIVE" && (
+                  <Link
+                    to="/bookings/new"
+                    state={facility}
+                    style={{
+                      background: "#6c63ff", color: "#fff", padding: "0.6rem 1.4rem",
+                      borderRadius: "8px", fontWeight: "600", textDecoration: "none",
+                      fontSize: "0.95rem"
+                    }}
+                  >
+                    Book Now
+                  </Link>
+                )}
+              </div>
             </section>
           ) : (
             <section className="fd-card" aria-label="No facility selected">
