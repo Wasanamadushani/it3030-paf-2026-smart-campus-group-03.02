@@ -1,11 +1,14 @@
 import { useEffect, useState } from "react";
+import { NavLink } from "react-router-dom";
+
+const AUTH_STORAGE_KEY = "sch.currentUser";
 
 const menuItems = [
-  "Home",
-  "Resources",
-  "Bookings",
-  "Tickets",
-  "Notifications",
+  { label: "Home", to: "/" },
+  { label: "Resources", to: "/facilities" },
+  { label: "Bookings", href: "#" },
+  { label: "Tickets", href: "#" },
+  { label: "Notifications", href: "#" },
 ];
 
 export default function Navbar({ userName = "Alex Silva", role = "USER" }) {
@@ -61,6 +64,20 @@ export default function Navbar({ userName = "Alex Silva", role = "USER" }) {
   const passedPasswordChecks = passwordChecks.filter((item) => item.passed).length;
   const passwordStrengthLabel =
     passedPasswordChecks <= 1 ? "Weak" : passedPasswordChecks <= 3 ? "Medium" : "Strong";
+
+  function persistCurrentUser(user) {
+    setCurrentUser(user);
+
+    try {
+      if (user) {
+        localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(user));
+      } else {
+        localStorage.removeItem(AUTH_STORAGE_KEY);
+      }
+    } catch (error) {
+      // Ignore storage errors and keep in-memory auth state.
+    }
+  }
 
   function clearFieldError(fieldName) {
     setFieldErrors((prev) => {
@@ -123,7 +140,7 @@ export default function Navbar({ userName = "Alex Silva", role = "USER" }) {
         return;
       }
 
-      setCurrentUser(data);
+      persistCurrentUser(data);
       setIsLoginOpen(false);
       setEmail("");
       setPassword("");
@@ -162,7 +179,7 @@ export default function Navbar({ userName = "Alex Silva", role = "USER" }) {
         return;
       }
 
-      setCurrentUser(data);
+      persistCurrentUser(data);
       setSuccessMessage("Registration successful");
       setIsLoginOpen(false);
       setFullName("");
@@ -195,7 +212,7 @@ export default function Navbar({ userName = "Alex Silva", role = "USER" }) {
   }
 
   function handleSignOut() {
-    setCurrentUser(null);
+    persistCurrentUser(null);
     setIsProfileOpen(false);
   }
 
@@ -212,6 +229,17 @@ export default function Navbar({ userName = "Alex Silva", role = "USER" }) {
   }
 
   useEffect(() => {
+    try {
+      const storedUser = localStorage.getItem(AUTH_STORAGE_KEY);
+      if (storedUser) {
+        setCurrentUser(JSON.parse(storedUser));
+      }
+    } catch (error) {
+      // Ignore parsing/storage errors and continue without persisted auth.
+    }
+  }, []);
+
+  useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const authStatus = params.get("auth");
 
@@ -224,12 +252,14 @@ export default function Navbar({ userName = "Alex Silva", role = "USER" }) {
     const roleFromGoogle = params.get("role") || "CUSTOMER";
     const profilePicFromGoogle = params.get("profilePic") || "";
 
-    setCurrentUser({
+    const googleUser = {
       fullName: fullNameFromGoogle,
       email: emailFromGoogle,
       role: roleFromGoogle,
       profilePic: profilePicFromGoogle,
-    });
+    };
+
+    persistCurrentUser(googleUser);
     setIsLoginOpen(false);
     setIsProfileOpen(false);
     setErrorMessage("");
@@ -262,11 +292,43 @@ export default function Navbar({ userName = "Alex Silva", role = "USER" }) {
       </button>
 
       <nav className={`nav-links ${isMenuOpen ? "open" : ""}`}>
-        {menuItems.map((item) => (
-          <a key={item} href="#" className="nav-link">
-            {item}
-          </a>
-        ))}
+        {menuItems.map((item) => {
+          if (item.label === "Resources" && !currentUser) {
+            return (
+              <button
+                key={item.label}
+                type="button"
+                className="nav-link nav-link-lock"
+                onClick={() => {
+                  setIsMenuOpen(false);
+                  openAuthModal("login");
+                  setErrorMessage("Please login to access Facilities.");
+                }}
+              >
+                {item.label}
+              </button>
+            );
+          }
+
+          if (item.to) {
+            return (
+              <NavLink
+                key={item.label}
+                to={item.to}
+                className={({ isActive }) => (isActive ? "nav-link active" : "nav-link")}
+                onClick={() => setIsMenuOpen(false)}
+              >
+                {item.label}
+              </NavLink>
+            );
+          }
+
+          return (
+            <a key={item.label} href={item.href} className="nav-link">
+              {item.label}
+            </a>
+          );
+        })}
       </nav>
 
       <div className="profile-wrap">
