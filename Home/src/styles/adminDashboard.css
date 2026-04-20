@@ -4,6 +4,16 @@
   gap: 1.05rem;
 }
 
+.admin-dashboard-message {
+  margin: 0;
+  padding: 0.75rem 0.9rem;
+  border: 1px solid #fecaca;
+  border-radius: 12px;
+  background: #fff1f2;
+  color: #b91c1c;
+  font-size: 0.9rem;
+}
+
 .admin-card {
   background: #ffffff;
   border: 1px solid #e2e8f0;
@@ -74,6 +84,59 @@
   margin-top: 0.8rem;
   width: 100%;
   height: 280px;
+}
+
+.admin-facilities-card h3 {
+  margin: 0;
+  color: #0f172a;
+  font-size: 1.1rem;
+}
+
+.admin-facility-table-wrap {
+  margin-top: 0.85rem;
+  overflow-x: auto;
+}
+
+.admin-facility-table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 640px;
+}
+
+.admin-facility-table thead th {
+  text-align: left;
+  padding: 0.62rem 0.58rem;
+  color: #475569;
+  font-size: 0.82rem;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.admin-facility-table tbody td {
+  padding: 0.72rem 0.58rem;
+  color: #0f172a;
+  font-size: 0.89rem;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.admin-facility-status {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 110px;
+  border-radius: 999px;
+  padding: 0.2rem 0.55rem;
+  font-size: 0.74rem;
+  font-weight: 700;
+}
+
+.admin-facility-status-active {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.admin-facility-status-out {
+  background: #fee2e2;
+  color: #991b1b;
 }
 
 .admin-status-legend {

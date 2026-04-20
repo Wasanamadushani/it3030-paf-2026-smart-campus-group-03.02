@@ -1,6 +1,8 @@
-import { useLocation, useNavigate } from "react-router-dom";
+import { useEffect, useMemo, useState } from "react";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
+import { getFacilityById } from "../data/facilitiesStore";
 import "../styles/facilityDetails.css";
 
 function getStatusClass(status) {
@@ -12,9 +14,69 @@ function getStatusClass(status) {
 export default function FacilityDetails() {
   const role = "USER";
   const navigate = useNavigate();
-  const { state: facility } = useLocation();
+  const { id: routeId } = useParams();
+  const { state } = useLocation();
+  const [facility, setFacility] = useState(() => {
+    if (state && typeof state === "object" && Number(state.id) > 0) {
+      return state;
+    }
 
-  // TODO: Replace with API data from backend
+    return null;
+  });
+  const [isLoading, setIsLoading] = useState(true);
+  const [errorMessage, setErrorMessage] = useState("");
+
+  const resolvedFacilityId = useMemo(() => {
+    const numericRouteId = Number(routeId);
+    if (Number.isFinite(numericRouteId) && numericRouteId > 0) {
+      return numericRouteId;
+    }
+
+    const stateId = Number(state?.id ?? state?.facilityId);
+    if (Number.isFinite(stateId) && stateId > 0) {
+      return stateId;
+    }
+
+    return null;
+  }, [routeId, state]);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadFacility = async () => {
+      if (!resolvedFacilityId) {
+        setIsLoading(false);
+        setFacility(null);
+        setErrorMessage("No facility id was provided");
+        return;
+      }
+
+      setIsLoading(true);
+      setErrorMessage("");
+
+      try {
+        const nextFacility = await getFacilityById(resolvedFacilityId);
+        if (isMounted) {
+          setFacility(nextFacility);
+        }
+      } catch (error) {
+        if (isMounted) {
+          setFacility(null);
+          setErrorMessage(error.message || "Failed to load facility details");
+        }
+      } finally {
+        if (isMounted) {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    loadFacility();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [resolvedFacilityId]);
 
   return (
     <div className="app-shell fd-page-shell">
@@ -27,7 +89,11 @@ export default function FacilityDetails() {
             <p>Detailed view of the selected facility resource.</p>
           </header>
 
-          {facility ? (
+          {isLoading ? (
+            <section className="fd-card" aria-label="Loading facility details">
+              <p className="fd-empty-message">Loading facility details...</p>
+            </section>
+          ) : facility ? (
             <section className="fd-card" aria-label="Selected facility details">
               <div className="fd-card-top">
                 <h2>{facility.name}</h2>
@@ -61,7 +127,7 @@ export default function FacilityDetails() {
               <button
                 type="button"
                 className="fd-back-btn"
-                onClick={() => navigate("/facilities")}
+                onClick={() => navigate("/view-facilities")}
               >
                 Back to Facilities List
               </button>
@@ -69,13 +135,12 @@ export default function FacilityDetails() {
           ) : (
             <section className="fd-card" aria-label="No facility selected">
               <p className="fd-empty-message">
-                No facility was selected. Please return to the facilities list and choose a
-                facility.
+                {errorMessage || "No facility was selected. Please return to the facilities list and choose a facility."}
               </p>
               <button
                 type="button"
                 className="fd-back-btn"
-                onClick={() => navigate("/facilities")}
+                onClick={() => navigate("/view-facilities")}
               >
                 Back to Facilities List
               </button>

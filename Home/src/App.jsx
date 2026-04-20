@@ -34,7 +34,8 @@ function App() {
         </Route>
 
         <Route path="/facilities/view" element={<Navigate to="/view-facilities" replace />} />
-        <Route path="/facility-details" element={<FacilityDetails />} />
+        <Route path="/facility-details/:id" element={<FacilityDetails />} />
+        <Route path="/facility-details" element={<Navigate to="/view-facilities" replace />} />
         <Route path="/booking" element={<BookingPage />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

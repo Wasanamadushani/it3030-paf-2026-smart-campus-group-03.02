@@ -1,57 +1,76 @@
+import { useEffect, useMemo, useState } from "react";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import CalendarView from "../components/CalendarView";
 import { useNavigate } from "react-router-dom";
+import { getFacilitiesSummary } from "../data/facilitiesStore";
 import "../styles/facilities.css";
-
-const FACILITY_SNAPSHOT = [
-  {
-    name: "Lecture Hall A1",
-    type: "Room",
-    status: "ACTIVE",
-  },
-  {
-    name: "Lecture Hall B2",
-    type: "Room",
-    status: "ACTIVE",
-  },
-  {
-    name: "Networking Lab",
-    type: "Lab",
-    status: "ACTIVE",
-  },
-  {
-    name: "Software Lab",
-    type: "Lab",
-    status: "OUT_OF_SERVICE",
-  },
-  {
-    name: "Projector Kit",
-    type: "Equipment",
-    status: "ACTIVE",
-  },
-  {
-    name: "Portable PA System",
-    type: "Equipment",
-    status: "OUT_OF_SERVICE",
-  },
-];
 
 export default function FacilitiesPage() {
   const role = "USER";
   const navigate = useNavigate();
-  const totalFacilities = FACILITY_SNAPSHOT.length;
-  const activeFacilities = FACILITY_SNAPSHOT.filter((facility) => facility.status === "ACTIVE").length;
-  const outOfServiceFacilities = totalFacilities - activeFacilities;
-
-  const facilitiesByType = ["Room", "Lab", "Equipment"].map((type) => {
-    const count = FACILITY_SNAPSHOT.filter((facility) => facility.type === type).length;
-    return { type, count };
+  const [summary, setSummary] = useState({
+    totalFacilities: 0,
+    activeFacilities: 0,
+    outOfServiceFacilities: 0,
+    facilitiesByType: {},
   });
+  const [errorMessage, setErrorMessage] = useState("");
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadSummary = async () => {
+      try {
+        const nextSummary = await getFacilitiesSummary();
+        if (isMounted) {
+          setSummary({
+            totalFacilities: Number(nextSummary.totalFacilities || 0),
+            activeFacilities: Number(nextSummary.activeFacilities || 0),
+            outOfServiceFacilities: Number(nextSummary.outOfServiceFacilities || 0),
+            facilitiesByType: nextSummary.facilitiesByType || {},
+          });
+          setErrorMessage("");
+        }
+      } catch (error) {
+        if (isMounted) {
+          setSummary({
+            totalFacilities: 0,
+            activeFacilities: 0,
+            outOfServiceFacilities: 0,
+            facilitiesByType: {},
+          });
+          setErrorMessage(error.message || "Failed to load facilities summary");
+        }
+      }
+    };
+
+    loadSummary();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const totalFacilities = summary.totalFacilities;
+  const activeFacilities = summary.activeFacilities;
+  const outOfServiceFacilities = summary.outOfServiceFacilities;
+
+  const facilitiesByType = useMemo(() => {
+    const counts = summary.facilitiesByType || {};
+    return ["Room", "Lab", "Lecture Hall", "Equipment"].map((type) => ({
+      type,
+      count: Number(counts[type] || 0),
+    }));
+  }, [summary.facilitiesByType]);
 
   const maxTypeCount = Math.max(...facilitiesByType.map((item) => item.count), 1);
-  const activePercentage = Math.round((activeFacilities / totalFacilities) * 100);
-  const outOfServicePercentage = 100 - activePercentage;
+  const activePercentage = totalFacilities > 0
+    ? Math.round((activeFacilities / totalFacilities) * 100)
+    : 0;
+  const outOfServicePercentage = totalFacilities > 0
+    ? Math.max(0, 100 - activePercentage)
+    : 0;
 
   return (
     <div className="app-shell facilities-page-shell">
@@ -65,6 +84,7 @@ export default function FacilitiesPage() {
               Get a quick overview of facilities status, usage distribution, and access the complete
               facilities list from one place.
             </p>
+            {errorMessage && <p>{errorMessage}</p>}
           </header>
 
           <section className="fac-stats-grid" aria-label="Facility summary statistics">

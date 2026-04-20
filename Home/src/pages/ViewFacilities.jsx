@@ -15,14 +15,52 @@ export default function ViewFacilities() {
   const role = "USER";
   const navigate = useNavigate();
   const location = useLocation();
-  const [facilities, setFacilities] = useState(() => getFacilities());
+  const [facilities, setFacilities] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [errorMessage, setErrorMessage] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedType, setSelectedType] = useState("ALL");
   const [selectedStatus, setSelectedStatus] = useState("ALL");
 
   useEffect(() => {
-    setFacilities(getFacilities());
-    return subscribeFacilities(setFacilities);
+    let isMounted = true;
+
+    const loadFacilities = async () => {
+      setIsLoading(true);
+      setErrorMessage("");
+
+      try {
+        const nextFacilities = await getFacilities();
+        if (isMounted) {
+          setFacilities(nextFacilities);
+        }
+      } catch (error) {
+        if (isMounted) {
+          setErrorMessage(error.message || "Failed to load facilities");
+          setFacilities([]);
+        }
+      } finally {
+        if (isMounted) {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    loadFacilities();
+
+    const unsubscribe = subscribeFacilities((nextFacilities) => {
+      if (!isMounted) {
+        return;
+      }
+
+      setFacilities(nextFacilities);
+      setErrorMessage("");
+    });
+
+    return () => {
+      isMounted = false;
+      unsubscribe();
+    };
   }, []);
 
   useEffect(() => {
@@ -37,6 +75,11 @@ export default function ViewFacilities() {
   }, [location.state]);
 
   function handleViewDetails(facility) {
+    if (facility?.id) {
+      navigate(`/facility-details/${facility.id}`, { state: facility });
+      return;
+    }
+
     navigate("/facility-details", { state: facility });
   }
 
@@ -44,13 +87,19 @@ export default function ViewFacilities() {
   //   alert("clicked");
   //   navigate("/facilities");
   // }
-  function handleExploreAllFacilities() {
+  async function handleExploreAllFacilities() {
     setSearchTerm("");
     setSelectedType("ALL");
     setSelectedStatus("ALL");
     navigate("/facilities");
 
-    setFacilities([...getFacilities()]);
+    try {
+      setFacilities(await getFacilities());
+      setErrorMessage("");
+    } catch (error) {
+      setErrorMessage(error.message || "Failed to load facilities");
+      setFacilities([]);
+    }
   }
 
   const filteredFacilities = facilities.filter((facility) => {
@@ -58,7 +107,7 @@ export default function ViewFacilities() {
     const matchesSearch =
       normalizedSearchTerm.length === 0 ||
       facility.name.toLowerCase().includes(normalizedSearchTerm) ||
-      facility.location.toLowerCase().includes(normalizedSearchTerm);
+      String(facility.location ?? "").toLowerCase().includes(normalizedSearchTerm);
 
     const matchesType = selectedType === "ALL" || facility.type === selectedType;
     const matchesStatus = selectedStatus === "ALL" || facility.status === selectedStatus;
@@ -122,6 +171,10 @@ export default function ViewFacilities() {
           </section>
 
           <section className="vf-grid" aria-label="Available facility list">
+            {isLoading && <p className="vf-no-results">Loading facilities...</p>}
+
+            {!isLoading && errorMessage && <p className="vf-no-results">{errorMessage}</p>}
+
             {filteredFacilities.map((facility) => (
               <article key={`${facility.name}-${facility.location}`} className="vf-card">
                 <div className="vf-card-top">
@@ -154,7 +207,7 @@ export default function ViewFacilities() {
               </article>
             ))}
 
-            {filteredFacilities.length === 0 && (
+            {!isLoading && !errorMessage && filteredFacilities.length === 0 && (
               <p className="vf-no-results">No facilities found</p>
             )}
           </section>

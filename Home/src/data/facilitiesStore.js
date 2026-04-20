@@ -1,45 +1,10 @@
-const FACILITIES_STORAGE_KEY = "sch.facilities";
 const FACILITIES_UPDATED_EVENT = "smart-campus:facilities-updated";
-
-const DEFAULT_FACILITIES = [
-  {
-    id: 1,
-    name: "Lecture Hall A1",
-    type: "Lecture Hall",
-    building: "Main",
-    floor: 1,
-    block: "",
-    location: "Main Building - Floor 1",
-    capacity: 220,
-    status: "ACTIVE",
-  },
-  {
-    id: 2,
-    name: "Advanced Networking Lab",
-    type: "Lab",
-    building: "Engineering",
-    floor: 3,
-    block: "",
-    location: "Engineering Building - Floor 3",
-    capacity: 40,
-    status: "ACTIVE",
-  },
-  {
-    id: 3,
-    name: "Portable PA System",
-    type: "Equipment",
-    building: "Business",
-    floor: 1,
-    block: "",
-    location: "Business Building - Floor 1",
-    capacity: 1,
-    status: "OUT_OF_SERVICE",
-  },
-];
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8081";
+const FACILITIES_API_URL = `${API_BASE_URL}/api/facilities`;
 
 function normalizeFacility(facility, fallbackId) {
   return {
-    id: Number.isInteger(facility.id) ? facility.id : fallbackId,
+    id: Number.isFinite(Number(facility.id)) ? Number(facility.id) : fallbackId,
     name: facility.name ?? "",
     type: facility.type ?? "Room",
     building: facility.building ?? "",
@@ -51,20 +16,78 @@ function normalizeFacility(facility, fallbackId) {
   };
 }
 
-function cloneDefaultFacilities() {
-  return DEFAULT_FACILITIES.map((facility, index) => normalizeFacility(facility, index + 1));
+function normalizeFacilityList(facilities) {
+  if (!Array.isArray(facilities)) {
+    return [];
+  }
+
+  return facilities.map((facility, index) => normalizeFacility(facility, index + 1));
 }
 
 function isBrowserEnvironment() {
-  return typeof window !== "undefined" && typeof window.localStorage !== "undefined";
+  return typeof window !== "undefined";
 }
 
-function persistFacilities(nextFacilities) {
+async function parseErrorMessage(response) {
+  try {
+    const payload = await response.json();
+    if (payload && typeof payload.message === "string" && payload.message.trim().length > 0) {
+      return payload.message;
+    }
+  } catch (error) {
+    // Ignore parse errors and use fallback message.
+  }
+
+  return `Request failed with status ${response.status}`;
+}
+
+async function requestFacilities(path = "", options = {}) {
+  const response = await fetch(`${FACILITIES_API_URL}${path}`, {
+    ...options,
+    headers: {
+      "Content-Type": "application/json",
+      ...(options.headers || {}),
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(await parseErrorMessage(response));
+  }
+
+  if (response.status === 204) {
+    return null;
+  }
+
+  return response.json();
+}
+
+function toQueryString(filters = {}) {
+  const params = new URLSearchParams();
+  const search = String(filters.search ?? "").trim();
+  const type = String(filters.type ?? "").trim();
+  const status = String(filters.status ?? "").trim();
+
+  if (search) {
+    params.set("search", search);
+  }
+
+  if (type && type !== "ALL") {
+    params.set("type", type);
+  }
+
+  if (status && status !== "ALL") {
+    params.set("status", status);
+  }
+
+  const query = params.toString();
+  return query ? `?${query}` : "";
+}
+
+async function emitFacilitiesUpdated(nextFacilities) {
   if (!isBrowserEnvironment()) {
     return;
   }
 
-  window.localStorage.setItem(FACILITIES_STORAGE_KEY, JSON.stringify(nextFacilities));
   window.dispatchEvent(
     new CustomEvent(FACILITIES_UPDATED_EVENT, {
       detail: nextFacilities,
@@ -72,60 +95,55 @@ function persistFacilities(nextFacilities) {
   );
 }
 
-export function getFacilities() {
-  if (!isBrowserEnvironment()) {
-    return cloneDefaultFacilities();
-  }
-
-  try {
-    const rawValue = window.localStorage.getItem(FACILITIES_STORAGE_KEY);
-
-    if (!rawValue) {
-      return cloneDefaultFacilities();
-    }
-
-    const parsed = JSON.parse(rawValue);
-
-    if (!Array.isArray(parsed)) {
-      return cloneDefaultFacilities();
-    }
-
-    return parsed.map((facility, index) => normalizeFacility(facility, index + 1));
-  } catch (error) {
-    return cloneDefaultFacilities();
-  }
+export async function getFacilities(filters = {}) {
+  const facilities = await requestFacilities(toQueryString(filters), { method: "GET" });
+  return normalizeFacilityList(facilities);
 }
 
-export function addFacility(facilityPayload) {
-  const current = getFacilities();
-  const nextId = current.reduce((maxId, item) => Math.max(maxId, item.id), 0) + 1;
-  const created = normalizeFacility({ ...facilityPayload, id: nextId }, nextId);
-  const next = [...current, created];
-
-  persistFacilities(next);
-  return next;
+export async function getFacilitiesSummary() {
+  return requestFacilities("/summary", { method: "GET" });
 }
 
-export function updateFacility(id, facilityPayload) {
+export async function getFacilityById(id) {
   const numericId = Number(id);
-  const next = getFacilities().map((facility) => {
-    if (facility.id !== numericId) {
-      return facility;
-    }
+  if (!Number.isFinite(numericId) || numericId <= 0) {
+    throw new Error("Invalid facility id");
+  }
 
-    return normalizeFacility({ ...facility, ...facilityPayload, id: numericId }, numericId);
+  const facility = await requestFacilities(`/${numericId}`, { method: "GET" });
+  return normalizeFacility(facility, numericId);
+}
+
+export async function addFacility(facilityPayload) {
+  await requestFacilities("", {
+    method: "POST",
+    body: JSON.stringify(facilityPayload),
   });
 
-  persistFacilities(next);
-  return next;
+  const nextFacilities = await getFacilities();
+  await emitFacilitiesUpdated(nextFacilities);
+  return nextFacilities;
 }
 
-export function removeFacility(id) {
-  const numericId = Number(id);
-  const next = getFacilities().filter((facility) => facility.id !== numericId);
+export async function updateFacility(id, facilityPayload) {
+  await requestFacilities(`/${Number(id)}`, {
+    method: "PUT",
+    body: JSON.stringify(facilityPayload),
+  });
 
-  persistFacilities(next);
-  return next;
+  const nextFacilities = await getFacilities();
+  await emitFacilitiesUpdated(nextFacilities);
+  return nextFacilities;
+}
+
+export async function removeFacility(id) {
+  await requestFacilities(`/${Number(id)}`, {
+    method: "DELETE",
+  });
+
+  const nextFacilities = await getFacilities();
+  await emitFacilitiesUpdated(nextFacilities);
+  return nextFacilities;
 }
 
 export function subscribeFacilities(onFacilitiesChange) {
@@ -139,22 +157,16 @@ export function subscribeFacilities(onFacilitiesChange) {
       return;
     }
 
-    onFacilitiesChange(getFacilities());
-  };
-
-  const handleStorageUpdate = (event) => {
-    if (event.key !== FACILITIES_STORAGE_KEY) {
-      return;
-    }
-
-    onFacilitiesChange(getFacilities());
+    getFacilities()
+      .then(onFacilitiesChange)
+      .catch(() => {
+        // Ignore subscription refresh errors.
+      });
   };
 
   window.addEventListener(FACILITIES_UPDATED_EVENT, handleInTabUpdate);
-  window.addEventListener("storage", handleStorageUpdate);
 
   return () => {
     window.removeEventListener(FACILITIES_UPDATED_EVENT, handleInTabUpdate);
-    window.removeEventListener("storage", handleStorageUpdate);
   };
 }

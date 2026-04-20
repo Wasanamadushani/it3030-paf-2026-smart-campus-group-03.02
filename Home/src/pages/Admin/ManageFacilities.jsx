@@ -71,9 +71,9 @@ function buildLocation(building, floor, block) {
 }
 
 export default function ManageFacilities() {
-  // TODO: Connect to backend and role-based authentication
-
-  const [facilities, setFacilities] = useState(() => getFacilities());
+  const [facilities, setFacilities] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [errorMessage, setErrorMessage] = useState("");
   const [formData, setFormData] = useState(EMPTY_FORM);
   const [formErrors, setFormErrors] = useState({});
   const [successMessage, setSuccessMessage] = useState("");
@@ -81,8 +81,44 @@ export default function ManageFacilities() {
   const [editingFacilityId, setEditingFacilityId] = useState(null);
 
   useEffect(() => {
-    setFacilities(getFacilities());
-    return subscribeFacilities(setFacilities);
+    let isMounted = true;
+
+    const loadFacilities = async () => {
+      setIsLoading(true);
+      setErrorMessage("");
+
+      try {
+        const nextFacilities = await getFacilities();
+        if (isMounted) {
+          setFacilities(nextFacilities);
+        }
+      } catch (error) {
+        if (isMounted) {
+          setFacilities([]);
+          setErrorMessage(error.message || "Failed to load facilities");
+        }
+      } finally {
+        if (isMounted) {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    loadFacilities();
+
+    const unsubscribe = subscribeFacilities((nextFacilities) => {
+      if (!isMounted) {
+        return;
+      }
+
+      setFacilities(nextFacilities);
+      setErrorMessage("");
+    });
+
+    return () => {
+      isMounted = false;
+      unsubscribe();
+    };
   }, []);
 
   const isEditing = editingFacilityId !== null;
@@ -226,6 +262,7 @@ export default function ManageFacilities() {
     setFormData(EMPTY_FORM);
     setFormErrors({});
     setSuccessMessage("");
+    setErrorMessage("");
     setIsFormOpen(true);
   }
 
@@ -234,16 +271,25 @@ export default function ManageFacilities() {
     setFormData(toFormData(facility));
     setFormErrors({});
     setSuccessMessage("");
+    setErrorMessage("");
     setIsFormOpen(true);
   }
 
-  function handleDeleteFacility(id) {
-    setFacilities(removeFacility(id));
+  async function handleDeleteFacility(id) {
+    setSuccessMessage("");
+    setErrorMessage("");
 
-    if (editingFacilityId === id) {
-      setEditingFacilityId(null);
-      setFormData(EMPTY_FORM);
-      setIsFormOpen(false);
+    try {
+      const nextFacilities = await removeFacility(id);
+      setFacilities(nextFacilities);
+
+      if (editingFacilityId === id) {
+        setEditingFacilityId(null);
+        setFormData(EMPTY_FORM);
+        setIsFormOpen(false);
+      }
+    } catch (error) {
+      setErrorMessage(error.message || "Failed to delete facility");
     }
   }
 
@@ -251,15 +297,19 @@ export default function ManageFacilities() {
     setEditingFacilityId(null);
     setFormData(EMPTY_FORM);
     setFormErrors({});
+    setErrorMessage("");
     setIsFormOpen(false);
   }
 
-  function handleSubmitForm(event) {
+  async function handleSubmitForm(event) {
     event.preventDefault();
 
     if (!validateForm()) {
       return;
     }
+
+    setErrorMessage("");
+    setSuccessMessage("");
 
     const payload = {
       name: formData.name.trim(),
@@ -272,17 +322,21 @@ export default function ManageFacilities() {
       status: formData.status,
     };
 
-    if (isEditing) {
-      setFacilities(updateFacility(editingFacilityId, payload));
-    } else {
-      setFacilities(addFacility(payload));
-    }
+    try {
+      if (isEditing) {
+        setFacilities(await updateFacility(editingFacilityId, payload));
+      } else {
+        setFacilities(await addFacility(payload));
+      }
 
-    setEditingFacilityId(null);
-    setFormData(EMPTY_FORM);
-    setFormErrors({});
-    setSuccessMessage(isEditing ? "Facility updated successfully" : "Facility added successfully");
-    setIsFormOpen(false);
+      setEditingFacilityId(null);
+      setFormData(EMPTY_FORM);
+      setFormErrors({});
+      setSuccessMessage(isEditing ? "Facility updated successfully" : "Facility added successfully");
+      setIsFormOpen(false);
+    } catch (error) {
+      setErrorMessage(error.message || "Failed to save facility");
+    }
   }
 
   return (
@@ -301,6 +355,7 @@ export default function ManageFacilities() {
         </header>
 
         {successMessage && <p className="mf-form-success">{successMessage}</p>}
+        {errorMessage && <p className="mf-field-error">{errorMessage}</p>}
 
         {isFormOpen && (
           <section className="mf-form-card" aria-label="Facility form">
@@ -493,11 +548,19 @@ export default function ManageFacilities() {
                     </td>
                   </tr>
                 ))}
+
+                {!isLoading && facilities.length === 0 && (
+                  <tr>
+                    <td colSpan="6">No facilities found</td>
+                  </tr>
+                )}
               </tbody>
             </table>
           </div>
 
           <div className="mf-mobile-grid">
+            {isLoading && <p>Loading facilities...</p>}
+
             {facilities.map((facility) => (
               <article key={`mobile-${facility.id}`} className="mf-mobile-card">
                 <div className="mf-mobile-top">
