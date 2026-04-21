@@ -24,6 +24,12 @@ const PRIORITY_OPTIONS = [
   { value: "URGENT", label: "Urgent" },
 ];
 
+const FACULTY_OPTIONS = [
+  { value: "FACULTY_OF_COMPUTING", label: "Faculty of Computing" },
+  { value: "FACULTY_OF_BUSINESS", label: "Faculty of Business" },
+  { value: "FACULTY_OF_ARCHITECTURE", label: "Faculty of Architecture" },
+];
+
 const STATUS_FILTER_OPTIONS = [
   { value: "ALL", label: "All" },
   { value: "OPEN", label: "Open" },
@@ -35,11 +41,14 @@ const STATUS_FILTER_OPTIONS = [
 const MAX_ATTACHMENT_FILES = 5;
 const MAX_ATTACHMENT_BYTES = 5 * 1024 * 1024;
 const REGISTER_NUMBER_REGEX = /^IT\d{8}$/;
+const CONTACT_NUMBER_REGEX = /^\d{10}$/;
 
 const DEFAULT_FORM = {
   reporterName: "",
   reporterEmail: "",
   registerNumber: "",
+  faculty: "FACULTY_OF_COMPUTING",
+  contactNumber: "",
   title: "",
   category: "REGISTRATION",
   priority: "MEDIUM",
@@ -140,6 +149,8 @@ export default function TicketsPage() {
       const nextName = typeof user?.fullName === "string" ? user.fullName : "";
       const nextEmail = typeof user?.email === "string" ? user.email : "";
       const nextRegisterNumber = typeof user?.registerNumber === "string" ? user.registerNumber : "";
+      const nextFaculty = typeof user?.faculty === "string" ? user.faculty : "";
+      const nextContactNumber = typeof user?.contactNumber === "string" ? user.contactNumber : "";
 
       setLoggedUser(user);
 
@@ -148,6 +159,8 @@ export default function TicketsPage() {
         reporterName: nextName || prev.reporterName,
         reporterEmail: nextEmail || prev.reporterEmail,
         registerNumber: nextRegisterNumber || prev.registerNumber,
+        faculty: nextFaculty || prev.faculty,
+        contactNumber: nextContactNumber || prev.contactNumber,
       }));
     } catch (error) {
       // Ignore local storage parsing errors.
@@ -230,6 +243,11 @@ export default function TicketsPage() {
       return;
     }
 
+    if (!CONTACT_NUMBER_REGEX.test(form.contactNumber.trim())) {
+      setErrorMessage("Contact number must contain exactly 10 digits.");
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
@@ -246,6 +264,8 @@ export default function TicketsPage() {
         reporterName: form.reporterName,
         reporterEmail: form.reporterEmail,
         registerNumber: form.registerNumber.trim().toUpperCase(),
+        faculty: form.faculty,
+        contactNumber: form.contactNumber.trim(),
         title: form.title,
         category: form.category,
         priority: form.priority,
@@ -342,6 +362,33 @@ export default function TicketsPage() {
                 required
               />
               <p className="ticket-helper-text">Format: IT + 8 digits (example: IT23986587).</p>
+
+              <label htmlFor="faculty">Faculty</label>
+              <select
+                id="faculty"
+                value={form.faculty}
+                onChange={(event) => handleFieldChange("faculty", event.target.value)}
+                required
+              >
+                {FACULTY_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+
+              <label htmlFor="contactNumber">Contact Number</label>
+              <input
+                id="contactNumber"
+                type="tel"
+                value={form.contactNumber}
+                onChange={(event) => handleFieldChange("contactNumber", event.target.value.replace(/\D/g, ""))}
+                placeholder="0771234567"
+                pattern="^\d{10}$"
+                title="Enter exactly 10 digits"
+                required
+              />
+              <p className="ticket-helper-text">Enter 10 digits (example: 0771234567).</p>
 
               <label htmlFor="title">Ticket Title</label>
               <input
@@ -483,6 +530,12 @@ export default function TicketsPage() {
                     <div className="ticket-meta-grid">
                       <span>
                         <strong>Register No:</strong> {ticket.registerNumber || "-"}
+                      </span>
+                      <span>
+                        <strong>Faculty:</strong> {toLabel(ticket.faculty) || "-"}
+                      </span>
+                      <span>
+                        <strong>Contact:</strong> {ticket.contactNumber || "-"}
                       </span>
                       <span>
                         <strong>Category:</strong> {toLabel(ticket.category)}

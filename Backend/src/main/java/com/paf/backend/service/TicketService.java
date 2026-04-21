@@ -22,6 +22,13 @@ public class TicketService {
     private static final int MAX_ATTACHMENT_COUNT = 5;
     private static final long MAX_ATTACHMENT_BYTES = 5L * 1024L * 1024L;
     private static final Pattern REGISTER_NUMBER_PATTERN = Pattern.compile("^IT\\d{8}$");
+        private static final Pattern CONTACT_NUMBER_PATTERN = Pattern.compile("^\\d{10}$");
+
+        private static final Map<String, String> FACULTY_NORMALIZATION = Map.of(
+            "FACULTY_OF_COMPUTING", "FACULTY_OF_COMPUTING",
+            "FACULTY_OF_BUSINESS", "FACULTY_OF_BUSINESS",
+            "FACULTY_OF_ARCHITECTURE", "FACULTY_OF_ARCHITECTURE"
+        );
 
     private static final Map<String, String> CATEGORY_NORMALIZATION = Map.of(
             "REGISTRATION", "REGISTRATION",
@@ -60,13 +67,15 @@ public class TicketService {
         createTicket(new TicketRequest(
                 "System User",
                 "system@campus.local",
-            "IT23986587",
+                "IT23986587",
+                "FACULTY_OF_COMPUTING",
+                "0771234567",
                 "Registration not updated for semester 2",
                 "REGISTRATION",
                 "MEDIUM",
                 "Reg No: 2026CS045",
-            "Semester registration still shows pending even after payment.",
-            List.of()
+                "Semester registration still shows pending even after payment.",
+                List.of()
         ));
     }
 
@@ -78,7 +87,9 @@ public class TicketService {
                 nextId,
                 validated.reporterName(),
                 validated.reporterEmail(),
-            validated.registerNumber(),
+                validated.registerNumber(),
+                validated.faculty(),
+                validated.contactNumber(),
                 validated.title(),
                 validated.category(),
                 validated.priority(),
@@ -115,7 +126,9 @@ public class TicketService {
                 existing.id(),
                 existing.reporterName(),
                 existing.reporterEmail(),
-            existing.registerNumber(),
+                existing.registerNumber(),
+                existing.faculty(),
+                existing.contactNumber(),
                 existing.title(),
                 existing.category(),
                 existing.priority(),
@@ -140,7 +153,9 @@ public class TicketService {
                 existing.id(),
                 existing.reporterName(),
                 existing.reporterEmail(),
-            existing.registerNumber(),
+                existing.registerNumber(),
+                existing.faculty(),
+                existing.contactNumber(),
                 existing.title(),
                 existing.category(),
                 existing.priority(),
@@ -171,7 +186,9 @@ public class TicketService {
         String reporterEmail = normalizeRequiredText(request.reporterEmail(), "Reporter email is required")
                 .toLowerCase(Locale.ROOT);
         String registerNumber = normalizeRequiredText(request.registerNumber(), "Register number is required")
-            .toUpperCase(Locale.ROOT);
+                .toUpperCase(Locale.ROOT);
+        String faculty = normalizeRequiredEnum(request.faculty(), FACULTY_NORMALIZATION, "faculty");
+        String contactNumber = normalizeRequiredText(request.contactNumber(), "Contact number is required");
 
         if (!EMAIL_PATTERN.matcher(reporterEmail).matches()) {
             throw new IllegalArgumentException("Reporter email must be valid");
@@ -179,6 +196,10 @@ public class TicketService {
 
         if (!REGISTER_NUMBER_PATTERN.matcher(registerNumber).matches()) {
             throw new IllegalArgumentException("Register number must follow IT######## format");
+        }
+
+        if (!CONTACT_NUMBER_PATTERN.matcher(contactNumber).matches()) {
+            throw new IllegalArgumentException("Contact number must contain exactly 10 digits");
         }
 
         String title = normalizeRequiredText(request.title(), "Ticket title is required");
@@ -191,7 +212,9 @@ public class TicketService {
         return new ValidatedTicket(
                 reporterName,
                 reporterEmail,
-            registerNumber,
+                registerNumber,
+                faculty,
+                contactNumber,
                 title,
                 category,
                 priority,
@@ -297,6 +320,8 @@ public class TicketService {
             String reporterName,
             String reporterEmail,
             String registerNumber,
+            String faculty,
+            String contactNumber,
             String title,
             String category,
             String priority,

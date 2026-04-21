@@ -20,6 +20,8 @@ function normalizeTicket(ticket) {
     reporterName: ticket?.reporterName || "",
     reporterEmail: ticket?.reporterEmail || "",
     registerNumber: ticket?.registerNumber || "",
+    faculty: ticket?.faculty || "",
+    contactNumber: ticket?.contactNumber || "",
     title: ticket?.title || "",
     category: ticket?.category || "OTHER",
     priority: ticket?.priority || "MEDIUM",

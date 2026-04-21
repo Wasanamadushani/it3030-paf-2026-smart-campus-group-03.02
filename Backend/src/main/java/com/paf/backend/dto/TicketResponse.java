@@ -8,6 +8,8 @@ public record TicketResponse(
         String reporterName,
         String reporterEmail,
         String registerNumber,
+        String faculty,
+        String contactNumber,
         String title,
         String category,
         String priority,
