@@ -31,10 +31,11 @@ public class TicketController {
     @GetMapping
     public ResponseEntity<?> listTickets(
             @RequestParam(required = false) String reporterEmail,
-            @RequestParam(required = false) String status
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) String registerNumber
     ) {
         try {
-            List<TicketResponse> tickets = ticketService.listTickets(reporterEmail, status);
+            List<TicketResponse> tickets = ticketService.listTickets(reporterEmail, status, registerNumber);
             return ResponseEntity.ok(tickets);
         } catch (IllegalArgumentException ex) {
             return ResponseEntity.badRequest().body(Map.of("message", ex.getMessage()));

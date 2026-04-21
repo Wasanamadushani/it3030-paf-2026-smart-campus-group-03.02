@@ -27,7 +27,9 @@ public class TicketService {
         private static final Map<String, String> FACULTY_NORMALIZATION = Map.of(
             "FACULTY_OF_COMPUTING", "FACULTY_OF_COMPUTING",
             "FACULTY_OF_BUSINESS", "FACULTY_OF_BUSINESS",
-            "FACULTY_OF_ARCHITECTURE", "FACULTY_OF_ARCHITECTURE"
+                "FACULTY_OF_ARCHITECTURE", "FACULTY_OF_ARCHITECTURE",
+                "FACULTY_OF_ENGINEERING", "FACULTY_OF_ENGINEERING",
+                "FACULTY_OF_HUMANITIES_AND_SCIENCES", "FACULTY_OF_HUMANITIES_AND_SCIENCES"
         );
 
     private static final Map<String, String> CATEGORY_NORMALIZATION = Map.of(
@@ -51,7 +53,8 @@ public class TicketService {
     );
 
     private static final Map<String, String> STATUS_NORMALIZATION = Map.of(
-            "OPEN", "OPEN",
+            "PENDING", "PENDING",
+            "OPEN", "PENDING",
             "IN_PROGRESS", "IN_PROGRESS",
             "RESOLVED", "RESOLVED",
             "CLOSED", "CLOSED"
@@ -95,7 +98,7 @@ public class TicketService {
                 validated.priority(),
                 validated.location(),
                 validated.description(),
-                "OPEN",
+                "PENDING",
                 LocalDateTime.now(),
                 null,
                 "",
@@ -106,21 +109,37 @@ public class TicketService {
         return created;
     }
 
-    public List<TicketResponse> listTickets(String reporterEmail, String status) {
+        public List<TicketResponse> listTickets(String reporterEmail, String status, String registerNumber) {
         String normalizedReporterEmail = normalizeFilterValue(reporterEmail).toLowerCase(Locale.ROOT);
         String normalizedStatus = normalizeEnumFilter(status, STATUS_NORMALIZATION, "status");
+        String normalizedRegisterNumber = normalizeFilterValue(registerNumber).toUpperCase(Locale.ROOT);
 
         return tickets.values().stream()
                 .sorted((left, right) -> Long.compare(right.id(), left.id()))
                 .filter(ticket -> normalizedReporterEmail.isBlank()
                         || ticket.reporterEmail().equalsIgnoreCase(normalizedReporterEmail))
                 .filter(ticket -> normalizedStatus.isBlank() || ticket.status().equals(normalizedStatus))
+            .filter(ticket -> normalizedRegisterNumber.isBlank()
+                || ticket.registerNumber().contains(normalizedRegisterNumber))
                 .toList();
     }
 
     public TicketResponse updateTicketStatus(Long id, String status) {
         String normalizedStatus = normalizeRequiredEnum(status, STATUS_NORMALIZATION, "status");
         TicketResponse existing = findExistingTicket(id);
+        String currentStatus = existing.status();
+
+        if ("IN_PROGRESS".equals(normalizedStatus)) {
+            if (!"PENDING".equals(currentStatus)) {
+                throw new IllegalArgumentException("Only pending tickets can be opened");
+            }
+        } else if ("CLOSED".equals(normalizedStatus)) {
+            if (!"RESOLVED".equals(currentStatus)) {
+                throw new IllegalArgumentException("Only resolved tickets can be closed");
+            }
+        } else {
+            throw new IllegalArgumentException("Only IN_PROGRESS and CLOSED transitions are allowed");
+        }
 
         TicketResponse updated = new TicketResponse(
                 existing.id(),
@@ -149,6 +168,10 @@ public class TicketService {
         TicketResponse existing = findExistingTicket(id);
         String normalizedComment = normalizeRequiredText(comment, "Comment cannot be empty");
 
+        if (!"IN_PROGRESS".equals(existing.status())) {
+            throw new IllegalArgumentException("Admin response is allowed only for in-progress tickets");
+        }
+
         TicketResponse updated = new TicketResponse(
                 existing.id(),
                 existing.reporterName(),
@@ -161,7 +184,7 @@ public class TicketService {
                 existing.priority(),
                 existing.location(),
                 existing.description(),
-                existing.status(),
+                "RESOLVED",
                 existing.createdAt(),
                 LocalDateTime.now(),
                 normalizedComment,

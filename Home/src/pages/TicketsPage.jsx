@@ -28,6 +28,8 @@ const FACULTY_OPTIONS = [
   { value: "FACULTY_OF_COMPUTING", label: "Faculty of Computing" },
   { value: "FACULTY_OF_BUSINESS", label: "Faculty of Business" },
   { value: "FACULTY_OF_ARCHITECTURE", label: "Faculty of Architecture" },
+  { value: "FACULTY_OF_ENGINEERING", label: "Faculty of Engineering" },
+  { value: "FACULTY_OF_HUMANITIES_AND_SCIENCES", label: "Faculty of Humanities & Sciences" },
 ];
 
 const STATUS_FILTER_OPTIONS = [
