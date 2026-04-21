@@ -11,6 +11,7 @@ import AdminTickets from "./pages/Admin/AdminTickets";
 import AdminNotifications from "./pages/Admin/AdminNotifications";
 import FacilityDetails from "./pages/FacilityDetails";
 import BookingPage from "./pages/BookingPage";
+import TicketsPage from "./pages/TicketsPage";
 import "./styles/home.css";
 
 
@@ -37,6 +38,7 @@ function App() {
         <Route path="/facility-details/:id" element={<FacilityDetails />} />
         <Route path="/facility-details" element={<Navigate to="/view-facilities" replace />} />
         <Route path="/booking" element={<BookingPage />} />
+        <Route path="/tickets" element={<TicketsPage />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>

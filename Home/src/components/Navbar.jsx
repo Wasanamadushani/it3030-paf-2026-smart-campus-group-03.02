@@ -6,8 +6,8 @@ const AUTH_STORAGE_KEY = "sch.currentUser";
 const menuItems = [
   { label: "Home", to: "/" },
   { label: "Resources" }, // remove "to"
-  { label: "Bookings", href: "#" },
-  { label: "Tickets", href: "#" },
+  { label: "Bookings", to: "/booking" },
+  { label: "Tickets", to: "/tickets" },
   { label: "Notifications", href: "#" },
 ];
 
