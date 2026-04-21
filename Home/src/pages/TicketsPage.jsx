@@ -34,10 +34,12 @@ const STATUS_FILTER_OPTIONS = [
 
 const MAX_ATTACHMENT_FILES = 5;
 const MAX_ATTACHMENT_BYTES = 5 * 1024 * 1024;
+const REGISTER_NUMBER_REGEX = /^IT\d{8}$/;
 
 const DEFAULT_FORM = {
   reporterName: "",
   reporterEmail: "",
+  registerNumber: "",
   title: "",
   category: "REGISTRATION",
   priority: "MEDIUM",
@@ -137,6 +139,7 @@ export default function TicketsPage() {
       const user = JSON.parse(persistedUser);
       const nextName = typeof user?.fullName === "string" ? user.fullName : "";
       const nextEmail = typeof user?.email === "string" ? user.email : "";
+      const nextRegisterNumber = typeof user?.registerNumber === "string" ? user.registerNumber : "";
 
       setLoggedUser(user);
 
@@ -144,6 +147,7 @@ export default function TicketsPage() {
         ...prev,
         reporterName: nextName || prev.reporterName,
         reporterEmail: nextEmail || prev.reporterEmail,
+        registerNumber: nextRegisterNumber || prev.registerNumber,
       }));
     } catch (error) {
       // Ignore local storage parsing errors.
@@ -221,6 +225,11 @@ export default function TicketsPage() {
       return;
     }
 
+    if (!REGISTER_NUMBER_REGEX.test(form.registerNumber.trim().toUpperCase())) {
+      setErrorMessage("Register number must follow IT######## format. Example: IT23986587.");
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
@@ -236,6 +245,7 @@ export default function TicketsPage() {
       await createTicket({
         reporterName: form.reporterName,
         reporterEmail: form.reporterEmail,
+        registerNumber: form.registerNumber.trim().toUpperCase(),
         title: form.title,
         category: form.category,
         priority: form.priority,
@@ -319,6 +329,19 @@ export default function TicketsPage() {
                 required
               />
               <p className="ticket-helper-text">These fields are auto-filled from your logged-in account.</p>
+
+              <label htmlFor="registerNumber">Register Number</label>
+              <input
+                id="registerNumber"
+                type="text"
+                value={form.registerNumber}
+                onChange={(event) => handleFieldChange("registerNumber", event.target.value.toUpperCase())}
+                placeholder="IT23986587"
+                pattern="^IT\d{8}$"
+                title="Format: IT followed by 8 digits"
+                required
+              />
+              <p className="ticket-helper-text">Format: IT + 8 digits (example: IT23986587).</p>
 
               <label htmlFor="title">Ticket Title</label>
               <input
@@ -458,6 +481,9 @@ export default function TicketsPage() {
                     <p className="ticket-description">{ticket.description}</p>
 
                     <div className="ticket-meta-grid">
+                      <span>
+                        <strong>Register No:</strong> {ticket.registerNumber || "-"}
+                      </span>
                       <span>
                         <strong>Category:</strong> {toLabel(ticket.category)}
                       </span>

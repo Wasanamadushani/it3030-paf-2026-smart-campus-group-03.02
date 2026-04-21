@@ -21,6 +21,7 @@ public class TicketService {
 
     private static final int MAX_ATTACHMENT_COUNT = 5;
     private static final long MAX_ATTACHMENT_BYTES = 5L * 1024L * 1024L;
+    private static final Pattern REGISTER_NUMBER_PATTERN = Pattern.compile("^IT\\d{8}$");
 
     private static final Map<String, String> CATEGORY_NORMALIZATION = Map.of(
             "REGISTRATION", "REGISTRATION",
@@ -59,6 +60,7 @@ public class TicketService {
         createTicket(new TicketRequest(
                 "System User",
                 "system@campus.local",
+            "IT23986587",
                 "Registration not updated for semester 2",
                 "REGISTRATION",
                 "MEDIUM",
@@ -76,6 +78,7 @@ public class TicketService {
                 nextId,
                 validated.reporterName(),
                 validated.reporterEmail(),
+            validated.registerNumber(),
                 validated.title(),
                 validated.category(),
                 validated.priority(),
@@ -112,6 +115,7 @@ public class TicketService {
                 existing.id(),
                 existing.reporterName(),
                 existing.reporterEmail(),
+            existing.registerNumber(),
                 existing.title(),
                 existing.category(),
                 existing.priority(),
@@ -136,6 +140,7 @@ public class TicketService {
                 existing.id(),
                 existing.reporterName(),
                 existing.reporterEmail(),
+            existing.registerNumber(),
                 existing.title(),
                 existing.category(),
                 existing.priority(),
@@ -165,9 +170,15 @@ public class TicketService {
         String reporterName = normalizeRequiredText(request.reporterName(), "Reporter name is required");
         String reporterEmail = normalizeRequiredText(request.reporterEmail(), "Reporter email is required")
                 .toLowerCase(Locale.ROOT);
+        String registerNumber = normalizeRequiredText(request.registerNumber(), "Register number is required")
+            .toUpperCase(Locale.ROOT);
 
         if (!EMAIL_PATTERN.matcher(reporterEmail).matches()) {
             throw new IllegalArgumentException("Reporter email must be valid");
+        }
+
+        if (!REGISTER_NUMBER_PATTERN.matcher(registerNumber).matches()) {
+            throw new IllegalArgumentException("Register number must follow IT######## format");
         }
 
         String title = normalizeRequiredText(request.title(), "Ticket title is required");
@@ -180,6 +191,7 @@ public class TicketService {
         return new ValidatedTicket(
                 reporterName,
                 reporterEmail,
+            registerNumber,
                 title,
                 category,
                 priority,
@@ -284,6 +296,7 @@ public class TicketService {
     private record ValidatedTicket(
             String reporterName,
             String reporterEmail,
+            String registerNumber,
             String title,
             String category,
             String priority,

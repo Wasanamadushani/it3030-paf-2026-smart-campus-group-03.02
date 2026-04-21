@@ -19,6 +19,7 @@ function normalizeTicket(ticket) {
     id: Number(ticket?.id) || 0,
     reporterName: ticket?.reporterName || "",
     reporterEmail: ticket?.reporterEmail || "",
+    registerNumber: ticket?.registerNumber || "",
     title: ticket?.title || "",
     category: ticket?.category || "OTHER",
     priority: ticket?.priority || "MEDIUM",

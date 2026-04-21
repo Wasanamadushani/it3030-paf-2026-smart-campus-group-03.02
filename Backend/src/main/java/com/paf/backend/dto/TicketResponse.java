@@ -7,6 +7,7 @@ public record TicketResponse(
         Long id,
         String reporterName,
         String reporterEmail,
+        String registerNumber,
         String title,
         String category,
         String priority,
