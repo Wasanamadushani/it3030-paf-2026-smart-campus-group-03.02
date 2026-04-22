@@ -361,7 +361,7 @@ export default function AdminTickets() {
                   setErrorMessage("");
                 }}
               >
-                {showHistory ? "Active Tickets" : "Tcket History"}
+                {showHistory ? "Active Tickets" : "Ticket History"}
               </button>
               <button type="button" className="admin-ticket-btn secondary" onClick={loadTickets}>
                 Refresh
