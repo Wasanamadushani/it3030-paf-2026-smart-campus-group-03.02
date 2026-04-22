@@ -24,6 +24,32 @@ function formatDateTime(value) {
   return date.toLocaleString();
 }
 
+function formatBytes(bytes) {
+  if (!Number.isFinite(bytes) || bytes <= 0) {
+    return "0 B";
+  }
+
+  const units = ["B", "KB", "MB", "GB"];
+  let value = bytes;
+  let unitIndex = 0;
+
+  while (value >= 1024 && unitIndex < units.length - 1) {
+    value /= 1024;
+    unitIndex += 1;
+  }
+
+  return `${value.toFixed(unitIndex === 0 ? 0 : 1)} ${units[unitIndex]}`;
+}
+
+function buildAttachmentDataUrl(attachment) {
+  if (!attachment?.dataBase64) {
+    return "#";
+  }
+
+  const contentType = attachment.contentType || "application/octet-stream";
+  return `data:${contentType};base64,${attachment.dataBase64}`;
+}
+
 async function parseErrorMessage(response) {
   try {
     const payload = await response.json();
@@ -74,6 +100,14 @@ function normalizeTicket(ticket) {
     createdAt: ticket?.createdAt || null,
     updatedAt: ticket?.updatedAt || null,
     adminComment: ticket?.adminComment || "",
+    attachments: Array.isArray(ticket?.attachments)
+      ? ticket.attachments.map((attachment) => ({
+          fileName: attachment?.fileName || "attachment",
+          contentType: attachment?.contentType || "application/octet-stream",
+          sizeInBytes: Number(attachment?.sizeInBytes) || 0,
+          dataBase64: attachment?.dataBase64 || "",
+        }))
+      : [],
   };
 }
 
@@ -284,6 +318,27 @@ export default function AdminTickets() {
 
               <p className="admin-ticket-block"><strong>Reference:</strong> {selectedTicket.location}</p>
               <p className="admin-ticket-block"><strong>Description:</strong> {selectedTicket.description}</p>
+
+              {selectedTicket.attachments?.length > 0 && (
+                <div className="ticket-attachments">
+                  <strong>Attachments:</strong>
+                  <ul>
+                    {selectedTicket.attachments.map((attachment, index) => (
+                      <li key={`${selectedTicket.id}-${attachment.fileName}-${index}`}>
+                        <a
+                          href={buildAttachmentDataUrl(attachment)}
+                          download={attachment.fileName}
+                          target="_blank"
+                          rel="noreferrer"
+                        >
+                          {attachment.fileName}
+                        </a>
+                        <span>{formatBytes(attachment.sizeInBytes)}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
 
               <label htmlFor="adminResponse">Admin Response Message</label>
               <textarea
