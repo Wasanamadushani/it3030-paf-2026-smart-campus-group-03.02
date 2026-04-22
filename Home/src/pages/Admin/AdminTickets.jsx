@@ -52,6 +52,11 @@ function buildAttachmentDataUrl(attachment) {
   return `data:${contentType};base64,${attachment.dataBase64}`;
 }
 
+function isAdminAttachment(attachment) {
+  const normalizedSource = String(attachment?.uploadedBy || "").trim().toUpperCase();
+  return normalizedSource === "UPLOADED_BY_ADMIN" || normalizedSource === "ADMIN";
+}
+
 async function parseErrorMessage(response) {
   try {
     const payload = await response.json();
@@ -175,6 +180,8 @@ export default function AdminTickets() {
   const [successMessage, setSuccessMessage] = useState("");
 
   const selectedTicketId = selectedTicket?.id || null;
+  const studentAttachments = selectedTicket?.attachments?.filter((attachment) => !isAdminAttachment(attachment)) || [];
+  const adminAttachments = selectedTicket?.attachments?.filter((attachment) => isAdminAttachment(attachment)) || [];
 
   useEffect(() => {
     if (!selectedTicketId) {
@@ -416,11 +423,11 @@ export default function AdminTickets() {
               <p className="admin-ticket-block"><strong>Reference:</strong> {selectedTicket.location}</p>
               <p className="admin-ticket-block"><strong>Description:</strong> {selectedTicket.description}</p>
 
-              {selectedTicket.attachments?.length > 0 && (
+              {studentAttachments.length > 0 && (
                 <div className="ticket-attachments">
-                  <strong>Attachments:</strong>
+                  <strong>Student Attachments:</strong>
                   <ul>
-                    {selectedTicket.attachments.map((attachment, index) => (
+                    {studentAttachments.map((attachment, index) => (
                       <li key={`${selectedTicket.id}-${attachment.fileName}-${index}`}>
                         <a
                           href={buildAttachmentDataUrl(attachment)}
@@ -446,6 +453,27 @@ export default function AdminTickets() {
                 rows={4}
                 disabled={showHistory}
               />
+
+              {adminAttachments.length > 0 && (
+                <div className="ticket-admin-attachments">
+                  <strong>Admin Attachments:</strong>
+                  <ul>
+                    {adminAttachments.map((attachment, index) => (
+                      <li key={`${selectedTicket.id}-admin-${attachment.fileName}-${index}`}>
+                        <a
+                          href={buildAttachmentDataUrl(attachment)}
+                          download={attachment.fileName}
+                          target="_blank"
+                          rel="noreferrer"
+                        >
+                          {attachment.fileName}
+                        </a>
+                        <span>{formatBytes(attachment.sizeInBytes)}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
 
               <div className="admin-ticket-attachment-field">
                 <label htmlFor="adminAttachments">Attachments for Student</label>
