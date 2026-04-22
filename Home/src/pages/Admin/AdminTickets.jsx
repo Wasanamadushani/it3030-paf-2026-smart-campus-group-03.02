@@ -161,6 +161,12 @@ async function openTicket(ticketId) {
   });
 }
 
+async function closeTicket(ticketId) {
+  return request(`/api/tickets/${ticketId}/status?status=CLOSED`, {
+    method: "PATCH",
+  });
+}
+
 async function respondToTicket(ticketId, payload) {
   return request(`/api/tickets/${ticketId}/comment`, {
     method: "PATCH",
@@ -214,7 +220,7 @@ export default function AdminTickets() {
 
       const filteredTickets = data.filter((ticket) =>
         showHistory
-          ? ticket.status === "RESOLVED" || ticket.status === "CLOSED"
+          ? ticket.status === "RESOLVED"
           : ticket.status !== "RESOLVED" && ticket.status !== "CLOSED"
       );
 
@@ -259,7 +265,7 @@ export default function AdminTickets() {
         });
         const filteredTickets = refreshedTickets.filter((item) =>
           showHistory
-            ? item.status === "RESOLVED" || item.status === "CLOSED"
+            ? item.status === "RESOLVED"
             : item.status !== "RESOLVED" && item.status !== "CLOSED"
         );
         setTickets(filteredTickets);
@@ -345,6 +351,27 @@ export default function AdminTickets() {
     }
   }
 
+  async function handleCloseTicket() {
+    if (!selectedTicket) {
+      return;
+    }
+
+    setIsSubmitting(true);
+    setErrorMessage("");
+    setSuccessMessage("");
+
+    try {
+      await closeTicket(selectedTicket.id);
+      setSuccessMessage("Ticket closed. The student can now delete it from My Tickets.");
+      await loadTickets();
+      setSelectedTicketId(null);
+    } catch (error) {
+      setErrorMessage(error.message || "Failed to close ticket");
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
   return (
     <div className="admin-ticket-page">
       <section className="admin-ticket-layout">
@@ -387,7 +414,7 @@ export default function AdminTickets() {
           {isLoading && <p className="admin-ticket-note">Loading tickets...</p>}
           {!isLoading && tickets.length === 0 && (
             <p className="admin-ticket-note">
-              {showHistory ? "No resolved tickets found in history." : "No active tickets found."}
+              {showHistory ? "No resolved tickets waiting to be closed." : "No active tickets found."}
             </p>
           )}
 
@@ -528,6 +555,14 @@ export default function AdminTickets() {
                   onClick={handleRespondTicket}
                 >
                   Respond & Resolve
+                </button>
+                <button
+                  type="button"
+                  className="admin-ticket-btn secondary"
+                  disabled={!showHistory || isSubmitting || selectedTicket.status !== "RESOLVED"}
+                  onClick={handleCloseTicket}
+                >
+                  Close Ticket
                 </button>
               </div>
             </>

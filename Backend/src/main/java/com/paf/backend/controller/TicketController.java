@@ -10,6 +10,7 @@ import java.util.Map;
 import java.util.NoSuchElementException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -74,6 +75,21 @@ public class TicketController {
     ) {
         try {
             return ResponseEntity.ok(ticketService.addAdminComment(id, request));
+        } catch (NoSuchElementException ex) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("message", ex.getMessage()));
+        } catch (IllegalArgumentException ex) {
+            return ResponseEntity.badRequest().body(Map.of("message", ex.getMessage()));
+        }
+    }
+
+    @DeleteMapping("/{id:\\d+}")
+    public ResponseEntity<?> deleteTicket(
+            @PathVariable Long id,
+            @RequestParam String actor
+    ) {
+        try {
+            ticketService.deleteTicket(id, actor);
+            return ResponseEntity.noContent().build();
         } catch (NoSuchElementException ex) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("message", ex.getMessage()));
         } catch (IllegalArgumentException ex) {

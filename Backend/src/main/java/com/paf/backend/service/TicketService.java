@@ -244,6 +244,24 @@ public class TicketService {
             return ticketRepository.save(updated);
     }
 
+    public void deleteTicket(Long id, String actor) {
+        TicketResponse existing = findExistingTicket(id);
+        String normalizedActor = normalizeRequiredText(actor, "Actor is required")
+                .replace('-', '_')
+                .replace(' ', '_')
+                .toUpperCase(Locale.ROOT);
+
+        if (!"STUDENT".equals(normalizedActor)) {
+            throw new IllegalArgumentException("Only students can delete tickets");
+        }
+
+        if (!"CLOSED".equals(existing.status())) {
+            throw new IllegalArgumentException("Only closed tickets can be deleted");
+        }
+
+        ticketRepository.deleteById(id);
+    }
+
     private List<TicketAttachmentResponse> mergeAttachments(
             List<TicketAttachmentResponse> existingAttachments,
             List<TicketAttachmentResponse> newAttachments

@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
-import { createTicket, getTickets } from "../data/ticketStore";
+import { createTicket, deleteTicket, getTickets } from "../data/ticketStore";
 import "../styles/tickets.css";
 
 const AUTH_STORAGE_KEY = "sch.currentUser";
@@ -359,6 +359,34 @@ export default function TicketsPage({ view = "create" }) {
 
     } catch (error) {
       setErrorMessage(error.message || "Failed to raise ticket");
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  async function handleDeleteTicket(ticketId) {
+    setIsSubmitting(true);
+    setErrorMessage("");
+    setSuccessMessage("");
+
+    try {
+      await deleteTicket(ticketId);
+
+      setTickets((currentTickets) => currentTickets.filter((ticket) => ticket.id !== ticketId));
+
+      setSuccessMessage("Ticket deleted successfully.");
+
+      if (selectedTicketId === ticketId) {
+        setSelectedTicketId(null);
+      }
+
+      const refreshedTickets = await getTickets({
+        reporterEmail: form.reporterEmail,
+        status: statusFilter,
+      });
+      setTickets(refreshedTickets);
+    } catch (error) {
+      setErrorMessage(error.message || "Failed to delete ticket");
     } finally {
       setIsSubmitting(false);
     }
@@ -752,6 +780,19 @@ export default function TicketsPage({ view = "create" }) {
                                   </ul>
                                 </div>
                               )}
+                            </div>
+                          )}
+
+                          {ticket.status === "CLOSED" && (
+                            <div className="admin-ticket-actions">
+                              <button
+                                type="button"
+                                className="admin-ticket-btn danger"
+                                disabled={isSubmitting}
+                                onClick={() => handleDeleteTicket(ticket.id)}
+                              >
+                                Delete Ticket
+                              </button>
                             </div>
                           )}
                         </article>

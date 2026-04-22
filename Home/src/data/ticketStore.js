@@ -108,3 +108,12 @@ export async function updateTicketStatus(id, status) {
 
   return normalizeTicket(payload);
 }
+
+export async function deleteTicket(id) {
+  await requestTickets(
+    `/${Number(id)}?actor=STUDENT`,
+    {
+      method: "DELETE",
+    }
+  );
+}
