@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import { createTicket, getTickets } from "../data/ticketStore";
@@ -155,7 +156,8 @@ function splitAttachmentsByOwner(attachments = []) {
   return { studentAttachments, adminAttachments };
 }
 
-export default function TicketsPage() {
+export default function TicketsPage({ view = "create" }) {
+  const navigate = useNavigate();
   const [loggedUser, setLoggedUser] = useState(null);
   const [form, setForm] = useState(DEFAULT_FORM);
   const [selectedFiles, setSelectedFiles] = useState([]);
@@ -166,6 +168,7 @@ export default function TicketsPage() {
   const [errorMessage, setErrorMessage] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
   const fileInputRef = useRef(null);
+  const isListView = view === "list";
 
   const hasEmail = form.reporterEmail.trim().length > 0;
 
@@ -199,13 +202,17 @@ export default function TicketsPage() {
   }, []);
 
   useEffect(() => {
+    if (!isListView) {
+      return;
+    }
+
     if (!hasEmail) {
       setTickets([]);
       return;
     }
 
     loadTickets();
-  }, [statusFilter, hasEmail]);
+  }, [statusFilter, hasEmail, isListView]);
 
   async function loadTickets() {
     if (!form.reporterEmail.trim()) {
@@ -324,7 +331,6 @@ export default function TicketsPage() {
         fileInputRef.current.value = "";
       }
 
-      await loadTickets();
     } catch (error) {
       setErrorMessage(error.message || "Failed to raise ticket");
     } finally {
@@ -350,15 +356,28 @@ export default function TicketsPage() {
 
       <main className="tickets-main-content">
         <section className="tickets-hero">
-          <h1>Raise an Academic Support Ticket</h1>
-          <p>
-            Report issues related to registration, exams, results, attendance, or coursework.
-            Once submitted, you can track progress from this page.
-          </p>
+          <div className="tickets-hero-head">
+            <div className="tickets-hero-copy">
+              <h1>{isListView ? "My Tickets" : "Raise an Academic Support Ticket"}</h1>
+              <p>
+                {isListView
+                  ? "Check the status of your submitted academic support tickets and review admin responses."
+                  : "Report issues related to registration, exams, results, attendance, or coursework."}
+              </p>
+            </div>
+            <button
+              type="button"
+              className="ticket-refresh-btn ticket-hero-action"
+              onClick={() => navigate(isListView ? "/tickets" : "/tickets/my")}
+            >
+              {isListView ? "Raise New Ticket" : "My Tickets"}
+            </button>
+          </div>
         </section>
 
-        <section className="tickets-layout">
-          <article className="ticket-panel ticket-form-panel">
+        {!isListView && (
+          <section className="tickets-layout">
+            <article className="ticket-panel ticket-form-panel">
             <h2>Raise New Ticket</h2>
             <p>Fill in the details clearly so the support team can resolve it quickly.</p>
 
@@ -550,9 +569,13 @@ export default function TicketsPage() {
                 {isSubmitting ? "Submitting..." : "Submit Ticket"}
               </button>
             </form>
-          </article>
+            </article>
+          </section>
+        )}
 
-          <article className="ticket-panel ticket-list-panel">
+        {isListView && (
+          <section className="tickets-layout">
+            <article className="ticket-panel ticket-list-panel">
             <div className="ticket-list-head">
               <div>
                 <h2>My Tickets</h2>
@@ -685,8 +708,9 @@ export default function TicketsPage() {
                 })}
               </div>
             )}
-          </article>
-        </section>
+            </article>
+          </section>
+        )}
       </main>
 
       <Footer />

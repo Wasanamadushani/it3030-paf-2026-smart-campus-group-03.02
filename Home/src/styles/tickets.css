@@ -12,6 +12,17 @@
   box-shadow: 0 14px 26px rgba(37, 63, 216, 0.08);
 }
 
+.tickets-hero-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.tickets-hero-copy {
+  max-width: 760px;
+}
+
 .tickets-hero h1 {
   margin: 0;
   color: #14224a;
@@ -101,10 +112,11 @@
 .ticket-submit-btn,
 .ticket-refresh-btn {
   border: 0;
-  border-radius: 10px;
-  padding: 0.66rem 0.88rem;
+  border-radius: 14px;
+  padding: 0.9rem 1.4rem;
   color: #ffffff;
   background: linear-gradient(135deg, #3658ff, #2c47cf);
+  font-size: 1rem;
   font-weight: 600;
   cursor: pointer;
 }
@@ -116,7 +128,13 @@
 
 .ticket-refresh-btn {
   width: fit-content;
-  padding-inline: 0.8rem;
+  padding-inline: 1.35rem;
+}
+
+.ticket-hero-action {
+  align-self: flex-start;
+  min-width: 160px;
+  box-shadow: 0 12px 24px rgba(54, 88, 255, 0.2);
 }
 
 .ticket-message {
@@ -615,6 +633,11 @@
   .ticket-panel {
     padding: 0.9rem;
     border-radius: 14px;
+  }
+
+  .tickets-hero-head {
+    flex-direction: column;
+    align-items: flex-start;
   }
 
   .ticket-form-row {

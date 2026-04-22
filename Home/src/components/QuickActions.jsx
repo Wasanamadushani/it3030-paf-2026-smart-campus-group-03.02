@@ -23,7 +23,7 @@ const actions = [
     title: "View Tickets",
     desc: "Monitor active incidents and resolution progress.",
     type: "USER",
-    to: "/tickets",
+    to: "/tickets/my",
   },
   {
     title: "Admin Dashboard",
