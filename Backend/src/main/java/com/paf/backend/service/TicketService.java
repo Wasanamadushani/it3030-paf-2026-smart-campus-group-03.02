@@ -15,11 +15,15 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.regex.Pattern;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 
 @Service
 public class TicketService {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(TicketService.class);
 
     private static final String TICKET_SEQUENCE_NAME = "tickets_sequence";
     private static final String UPLOADED_BY_STUDENT = "UPLOADED_BY_STUDENT";
@@ -77,23 +81,27 @@ public class TicketService {
 
     @PostConstruct
     public void seedTickets() {
-        if (ticketRepository.count() > 0) {
-            return;
-        }
+        try {
+            if (ticketRepository.count() > 0) {
+                return;
+            }
 
-        createTicket(new TicketRequest(
-                "System User",
-                "system@campus.local",
-                "IT23986587",
-                "FACULTY_OF_COMPUTING",
-                "0771234567",
-                "Registration not updated for semester 2",
-                "REGISTRATION",
-                "MEDIUM",
-                "Reg No: 2026CS045",
-                "Semester registration still shows pending even after payment.",
-                List.of()
-        ));
+            createTicket(new TicketRequest(
+                    "System User",
+                    "system@campus.local",
+                    "IT23986587",
+                    "FACULTY_OF_COMPUTING",
+                    "0771234567",
+                    "Registration not updated for semester 2",
+                    "REGISTRATION",
+                    "MEDIUM",
+                    "Reg No: 2026CS045",
+                    "Semester registration still shows pending even after payment.",
+                    List.of()
+            ));
+        } catch (RuntimeException ex) {
+            LOGGER.warn("Skipping initial ticket seed because MongoDB is unavailable: {}", ex.getMessage());
+        }
     }
 
     public TicketResponse createTicket(TicketRequest request) {
