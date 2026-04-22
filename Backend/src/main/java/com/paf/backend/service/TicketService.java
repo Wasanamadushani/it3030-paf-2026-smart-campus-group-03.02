@@ -61,6 +61,18 @@ public class TicketService {
             "URGENT", "URGENT"
     );
 
+    private static final Map<String, String> YEAR_NORMALIZATION = Map.of(
+            "1", "1",
+            "2", "2",
+            "3", "3",
+            "4", "4"
+    );
+
+    private static final Map<String, String> SEMESTER_NORMALIZATION = Map.of(
+            "1", "1",
+            "2", "2"
+    );
+
     private static final Map<String, String> STATUS_NORMALIZATION = Map.of(
             "PENDING", "PENDING",
             "OPEN", "PENDING",
@@ -95,7 +107,9 @@ public class TicketService {
                     "Registration not updated for semester 2",
                     "REGISTRATION",
                     "MEDIUM",
-                    "Reg No: 2026CS045",
+                    "IT3030",
+                    "2",
+                    "2",
                     "Semester registration still shows pending even after payment.",
                     List.of()
             ));
@@ -118,7 +132,9 @@ public class TicketService {
                 validated.title(),
                 validated.category(),
                 validated.priority(),
-                validated.location(),
+                validated.courseCode(),
+                validated.year(),
+                validated.semester(),
                 validated.description(),
                 "PENDING",
                 LocalDateTime.now(),
@@ -171,7 +187,9 @@ public class TicketService {
                 existing.title(),
                 existing.category(),
                 existing.priority(),
-                existing.location(),
+                existing.courseCode(),
+                existing.year(),
+                existing.semester(),
                 existing.description(),
                 normalizedStatus,
                 existing.createdAt(),
@@ -211,7 +229,9 @@ public class TicketService {
                 existing.title(),
                 existing.category(),
                 existing.priority(),
-                existing.location(),
+                existing.courseCode(),
+                existing.year(),
+                existing.semester(),
                 existing.description(),
                 "RESOLVED",
                 existing.createdAt(),
@@ -269,7 +289,10 @@ public class TicketService {
         String title = normalizeRequiredText(request.title(), "Ticket title is required");
         String category = normalizeRequiredEnum(request.category(), CATEGORY_NORMALIZATION, "category");
         String priority = normalizeRequiredEnum(request.priority(), PRIORITY_NORMALIZATION, "priority");
-        String location = normalizeRequiredText(request.location(), "Location is required");
+        String courseCode = normalizeRequiredText(request.courseCode(), "Course code is required")
+                .toUpperCase(Locale.ROOT);
+        String year = normalizeRequiredEnum(request.year(), YEAR_NORMALIZATION, "year");
+        String semester = normalizeRequiredEnum(request.semester(), SEMESTER_NORMALIZATION, "semester");
         String description = normalizeRequiredText(request.description(), "Description is required");
         List<TicketAttachmentResponse> attachments = normalizeAttachments(
                 request.attachments(),
@@ -285,7 +308,9 @@ public class TicketService {
                 title,
                 category,
                 priority,
-                location,
+                courseCode,
+                year,
+                semester,
                 description,
                 attachments
         );
@@ -414,7 +439,9 @@ public class TicketService {
             String title,
             String category,
             String priority,
-            String location,
+            String courseCode,
+            String year,
+            String semester,
             String description,
             List<TicketAttachmentResponse> attachments
     ) {

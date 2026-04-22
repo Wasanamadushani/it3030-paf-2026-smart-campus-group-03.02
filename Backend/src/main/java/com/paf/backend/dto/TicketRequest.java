@@ -25,8 +25,12 @@ public record TicketRequest(
         String category,
         @NotBlank(message = "Ticket priority is required")
         String priority,
-        @NotBlank(message = "Location is required")
-        String location,
+        @NotBlank(message = "Course code is required")
+        String courseCode,
+        @NotBlank(message = "Year is required")
+        String year,
+        @NotBlank(message = "Semester is required")
+        String semester,
         @NotBlank(message = "Description is required")
         String description,
         List<TicketAttachmentRequest> attachments

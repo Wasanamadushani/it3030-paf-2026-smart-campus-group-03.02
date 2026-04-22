@@ -54,9 +54,23 @@ const DEFAULT_FORM = {
   title: "",
   category: "REGISTRATION",
   priority: "MEDIUM",
-  location: "",
+  courseCode: "",
+  year: "1",
+  semester: "1",
   description: "",
 };
+
+const YEAR_OPTIONS = [
+  { value: "1", label: "Year 1" },
+  { value: "2", label: "Year 2" },
+  { value: "3", label: "Year 3" },
+  { value: "4", label: "Year 4" },
+];
+
+const SEMESTER_OPTIONS = [
+  { value: "1", label: "Semester 1" },
+  { value: "2", label: "Semester 2" },
+];
 
 function toLabel(value) {
   return String(value || "")
@@ -287,7 +301,9 @@ export default function TicketsPage() {
         title: form.title,
         category: form.category,
         priority: form.priority,
-        location: form.location,
+        courseCode: form.courseCode.trim().toUpperCase(),
+        year: form.year,
+        semester: form.semester,
         description: form.description,
         attachments,
       });
@@ -298,7 +314,9 @@ export default function TicketsPage() {
         title: "",
         category: "REGISTRATION",
         priority: "MEDIUM",
-        location: "",
+        courseCode: "",
+        year: "1",
+        semester: "1",
         description: "",
       }));
       setSelectedFiles([]);
@@ -450,15 +468,49 @@ export default function TicketsPage() {
                 </div>
               </div>
 
-              <label htmlFor="location">Reference Details</label>
+              <label htmlFor="courseCode">Course Code</label>
               <input
-                id="location"
+                id="courseCode"
                 type="text"
-                value={form.location}
-                onChange={(event) => handleFieldChange("location", event.target.value)}
-                placeholder="Course code / semester / registration number"
+                value={form.courseCode}
+                onChange={(event) => handleFieldChange("courseCode", event.target.value.toUpperCase())}
+                placeholder="IT3030"
                 required
               />
+
+              <div className="ticket-form-row">
+                <div>
+                  <label htmlFor="year">Year</label>
+                  <select
+                    id="year"
+                    value={form.year}
+                    onChange={(event) => handleFieldChange("year", event.target.value)}
+                    required
+                  >
+                    {YEAR_OPTIONS.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label htmlFor="semester">Semester</label>
+                  <select
+                    id="semester"
+                    value={form.semester}
+                    onChange={(event) => handleFieldChange("semester", event.target.value)}
+                    required
+                  >
+                    {SEMESTER_OPTIONS.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
 
               <label htmlFor="description">Description</label>
               <textarea
@@ -565,7 +617,13 @@ export default function TicketsPage() {
                           <strong>Priority:</strong> {toLabel(ticket.priority)}
                         </span>
                         <span>
-                          <strong>Location:</strong> {ticket.location}
+                          <strong>Course Code:</strong> {ticket.courseCode || "-"}
+                        </span>
+                        <span>
+                          <strong>Year:</strong> {ticket.year || "-"}
+                        </span>
+                        <span>
+                          <strong>Semester:</strong> {ticket.semester || "-"}
                         </span>
                         <span>
                           <strong>Created:</strong> {formatDateTime(ticket.createdAt)}

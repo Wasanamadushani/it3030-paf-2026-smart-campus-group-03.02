@@ -114,7 +114,9 @@ function normalizeTicket(ticket) {
     title: ticket?.title || "",
     category: ticket?.category || "OTHER",
     priority: ticket?.priority || "MEDIUM",
-    location: ticket?.location || "",
+    courseCode: ticket?.courseCode || "",
+    year: ticket?.year || "",
+    semester: ticket?.semester || "",
     description: ticket?.description || "",
     status: ticket?.status || "PENDING",
     createdAt: ticket?.createdAt || null,
@@ -417,10 +419,11 @@ export default function AdminTickets() {
                 <p><strong>Contact:</strong> {selectedTicket.contactNumber}</p>
                 <p><strong>Category:</strong> {toLabel(selectedTicket.category)}</p>
                 <p><strong>Priority:</strong> {toLabel(selectedTicket.priority)}</p>
+                <p><strong>Course Code:</strong> {selectedTicket.courseCode || "-"}</p>
+                <p><strong>Year:</strong> {selectedTicket.year || "-"}</p>
+                <p><strong>Semester:</strong> {selectedTicket.semester || "-"}</p>
                 <p><strong>Created:</strong> {formatDateTime(selectedTicket.createdAt)}</p>
               </div>
-
-              <p className="admin-ticket-block"><strong>Reference:</strong> {selectedTicket.location}</p>
               <p className="admin-ticket-block"><strong>Description:</strong> {selectedTicket.description}</p>
 
               {studentAttachments.length > 0 && (
