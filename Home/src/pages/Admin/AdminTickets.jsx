@@ -1,7 +1,9 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import "../../styles/tickets.css";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8081";
+const MAX_ATTACHMENT_FILES = 5;
+const MAX_ATTACHMENT_BYTES = 5 * 1024 * 1024;
 
 function toLabel(value) {
   return String(value || "")
@@ -83,6 +85,19 @@ async function request(path, options = {}) {
   return response.json();
 }
 
+function readFileAsBase64(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = String(reader.result || "");
+      const commaIndex = result.indexOf(",");
+      resolve(commaIndex >= 0 ? result.slice(commaIndex + 1) : result);
+    };
+    reader.onerror = () => reject(new Error(`Failed to read file: ${file.name}`));
+    reader.readAsDataURL(file);
+  });
+}
+
 function normalizeTicket(ticket) {
   return {
     id: Number(ticket?.id) || 0,
@@ -106,6 +121,7 @@ function normalizeTicket(ticket) {
           contentType: attachment?.contentType || "application/octet-stream",
           sizeInBytes: Number(attachment?.sizeInBytes) || 0,
           dataBase64: attachment?.dataBase64 || "",
+          uploadedBy: attachment?.uploadedBy || "UPLOADED_BY_STUDENT",
         }))
       : [],
   };
@@ -138,27 +154,27 @@ async function openTicket(ticketId) {
   });
 }
 
-async function respondToTicket(ticketId, comment) {
-  return request(`/api/tickets/${ticketId}/comment?comment=${encodeURIComponent(comment)}`, {
+async function respondToTicket(ticketId, payload) {
+  return request(`/api/tickets/${ticketId}/comment`, {
     method: "PATCH",
+    body: JSON.stringify(payload),
   });
 }
 
 export default function AdminTickets() {
+  const fileInputRef = useRef(null);
   const [tickets, setTickets] = useState([]);
   const [selectedTicket, setSelectedTicket] = useState(null);
   const [registerNumberFilter, setRegisterNumberFilter] = useState("");
   const [responseMessage, setResponseMessage] = useState("");
+  const [selectedFiles, setSelectedFiles] = useState([]);
+  const [showHistory, setShowHistory] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
 
   const selectedTicketId = selectedTicket?.id || null;
-
-  useEffect(() => {
-    loadTickets();
-  }, []);
 
   useEffect(() => {
     if (!selectedTicketId) {
@@ -182,7 +198,21 @@ export default function AdminTickets() {
       const data = await getAdminTickets({
         registerNumber: registerNumberFilter,
       });
-      setTickets(data);
+
+      const filteredTickets = data.filter((ticket) =>
+        showHistory
+          ? ticket.status === "RESOLVED" || ticket.status === "CLOSED"
+          : ticket.status !== "RESOLVED" && ticket.status !== "CLOSED"
+      );
+
+      setTickets(filteredTickets);
+      setSelectedTicket((currentSelected) => {
+        if (!currentSelected) {
+          return filteredTickets[0] || null;
+        }
+
+        return filteredTickets.find((ticket) => ticket.id === currentSelected.id) || filteredTickets[0] || null;
+      });
     } catch (error) {
       setErrorMessage(error.message || "Failed to load tickets");
     } finally {
@@ -190,11 +220,43 @@ export default function AdminTickets() {
     }
   }
 
+  useEffect(() => {
+    loadTickets();
+  }, [showHistory]);
+
+  function resetAttachmentInput() {
+    setSelectedFiles([]);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  }
+
   function handleSelectTicket(ticket) {
     setSelectedTicket(ticket);
     setResponseMessage(ticket.adminComment || "");
+    resetAttachmentInput();
     setSuccessMessage("");
     setErrorMessage("");
+  }
+
+  function handleAttachmentsChange(event) {
+    const files = Array.from(event.target.files || []);
+    setErrorMessage("");
+
+    if (files.length > MAX_ATTACHMENT_FILES) {
+      resetAttachmentInput();
+      setErrorMessage(`You can attach up to ${MAX_ATTACHMENT_FILES} files.`);
+      return;
+    }
+
+    const invalidFile = files.find((file) => file.size > MAX_ATTACHMENT_BYTES);
+    if (invalidFile) {
+      resetAttachmentInput();
+      setErrorMessage(`Each file must be 5 MB or smaller. Invalid file: ${invalidFile.name}`);
+      return;
+    }
+
+    setSelectedFiles(files);
   }
 
   async function handleSearch(event) {
@@ -227,8 +289,8 @@ export default function AdminTickets() {
       return;
     }
 
-    if (!responseMessage.trim()) {
-      setErrorMessage("Please enter a response message.");
+    if (!responseMessage.trim() && selectedFiles.length === 0) {
+      setErrorMessage("Please enter a response message or attach at least one file.");
       return;
     }
 
@@ -237,7 +299,22 @@ export default function AdminTickets() {
     setSuccessMessage("");
 
     try {
-      await respondToTicket(selectedTicket.id, responseMessage.trim());
+      const attachments = await Promise.all(
+        selectedFiles.map(async (file) => ({
+          fileName: file.name,
+          contentType: file.type || "application/octet-stream",
+          sizeInBytes: file.size,
+          dataBase64: await readFileAsBase64(file),
+          uploadedBy: "UPLOADED_BY_ADMIN",
+        }))
+      );
+
+      await respondToTicket(selectedTicket.id, {
+        comment: responseMessage.trim(),
+        attachments,
+      });
+
+      resetAttachmentInput();
       setSuccessMessage("Response sent. Ticket moved to Resolved.");
       await loadTickets();
     } catch (error) {
@@ -252,10 +329,23 @@ export default function AdminTickets() {
       <section className="admin-ticket-layout">
         <article className="admin-ticket-list-card">
           <div className="admin-ticket-list-head">
-            <h3>Tickets</h3>
-            <button type="button" className="admin-ticket-btn secondary" onClick={loadTickets}>
-              Refresh
-            </button>
+            <h3>{showHistory ? "Ticket History" : "Tickets"}</h3>
+            <div className="admin-ticket-list-head-actions">
+              <button
+                type="button"
+                className="admin-ticket-btn secondary"
+                onClick={() => {
+                  setShowHistory((currentValue) => !currentValue);
+                  setSuccessMessage("");
+                  setErrorMessage("");
+                }}
+              >
+                {showHistory ? "Active Tickets" : "Tcket History"}
+              </button>
+              <button type="button" className="admin-ticket-btn secondary" onClick={loadTickets}>
+                Refresh
+              </button>
+            </div>
           </div>
 
           <form className="admin-ticket-filter-form" onSubmit={handleSearch}>
@@ -274,7 +364,11 @@ export default function AdminTickets() {
           </form>
 
           {isLoading && <p className="admin-ticket-note">Loading tickets...</p>}
-          {!isLoading && tickets.length === 0 && <p className="admin-ticket-note">No tickets found.</p>}
+          {!isLoading && tickets.length === 0 && (
+            <p className="admin-ticket-note">
+              {showHistory ? "No resolved tickets found in history." : "No active tickets found."}
+            </p>
+          )}
 
           <div className="admin-ticket-list">
             {tickets.map((ticket) => {
@@ -290,6 +384,9 @@ export default function AdminTickets() {
                     <strong>{ticket.title}</strong>
                     <p>{ticket.registerNumber}</p>
                   </div>
+                  <span className={`admin-ticket-badge status-${String(ticket.status || "").toLowerCase()}`}>
+                    {toLabel(ticket.status)}
+                  </span>
                 </button>
               );
             })}
@@ -347,13 +444,36 @@ export default function AdminTickets() {
                 onChange={(event) => setResponseMessage(event.target.value)}
                 placeholder="Type your response to the student"
                 rows={4}
+                disabled={showHistory}
               />
+
+              <div className="admin-ticket-attachment-field">
+                <label htmlFor="adminAttachments">Attachments for Student</label>
+                <input
+                  id="adminAttachments"
+                  ref={fileInputRef}
+                  type="file"
+                  multiple
+                  onChange={handleAttachmentsChange}
+                  disabled={showHistory || isSubmitting || selectedTicket.status !== "IN_PROGRESS"}
+                />
+                <p className="ticket-helper-text">Up to 5 files, each max 5 MB.</p>
+                {selectedFiles.length > 0 && (
+                  <div className="ticket-selected-files">
+                    {selectedFiles.map((file) => (
+                      <span key={`${file.name}-${file.size}`} className="ticket-file-chip">
+                        {file.name} ({formatBytes(file.size)})
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
 
               <div className="admin-ticket-actions">
                 <button
                   type="button"
                   className="admin-ticket-btn"
-                  disabled={isSubmitting || selectedTicket.status !== "PENDING"}
+                  disabled={showHistory || isSubmitting || selectedTicket.status !== "PENDING"}
                   onClick={handleOpenTicket}
                 >
                   Open Ticket
@@ -361,7 +481,7 @@ export default function AdminTickets() {
                 <button
                   type="button"
                   className="admin-ticket-btn"
-                  disabled={isSubmitting || selectedTicket.status !== "IN_PROGRESS"}
+                  disabled={showHistory || isSubmitting || selectedTicket.status !== "IN_PROGRESS"}
                   onClick={handleRespondTicket}
                 >
                   Respond & Resolve

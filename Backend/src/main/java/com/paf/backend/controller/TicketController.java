@@ -1,5 +1,6 @@
 package com.paf.backend.controller;
 
+import com.paf.backend.dto.AdminCommentRequest;
 import com.paf.backend.dto.TicketRequest;
 import com.paf.backend.dto.TicketResponse;
 import com.paf.backend.service.TicketService;
@@ -69,10 +70,10 @@ public class TicketController {
     @PatchMapping("/{id:\\d+}/comment")
     public ResponseEntity<?> addAdminComment(
             @PathVariable Long id,
-            @RequestParam String comment
+            @RequestBody AdminCommentRequest request
     ) {
         try {
-            return ResponseEntity.ok(ticketService.addAdminComment(id, comment));
+            return ResponseEntity.ok(ticketService.addAdminComment(id, request));
         } catch (NoSuchElementException ex) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("message", ex.getMessage()));
         } catch (IllegalArgumentException ex) {

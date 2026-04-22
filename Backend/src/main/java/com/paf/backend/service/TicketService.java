@@ -1,36 +1,41 @@
 package com.paf.backend.service;
 
+import com.paf.backend.dto.AdminCommentRequest;
 import com.paf.backend.dto.TicketAttachmentRequest;
 import com.paf.backend.dto.TicketAttachmentResponse;
 import com.paf.backend.dto.TicketRequest;
 import com.paf.backend.dto.TicketResponse;
+import com.paf.backend.repository.TicketRepository;
 import jakarta.annotation.PostConstruct;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.NoSuchElementException;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicLong;
 import java.util.regex.Pattern;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 
 @Service
 public class TicketService {
 
+    private static final String TICKET_SEQUENCE_NAME = "tickets_sequence";
+    private static final String UPLOADED_BY_STUDENT = "UPLOADED_BY_STUDENT";
+    private static final String UPLOADED_BY_ADMIN = "UPLOADED_BY_ADMIN";
     private static final int MAX_ATTACHMENT_COUNT = 5;
     private static final long MAX_ATTACHMENT_BYTES = 5L * 1024L * 1024L;
     private static final Pattern REGISTER_NUMBER_PATTERN = Pattern.compile("^IT\\d{8}$");
-        private static final Pattern CONTACT_NUMBER_PATTERN = Pattern.compile("^\\d{10}$");
+    private static final Pattern CONTACT_NUMBER_PATTERN = Pattern.compile("^\\d{10}$");
 
-        private static final Map<String, String> FACULTY_NORMALIZATION = Map.of(
+    private static final Map<String, String> FACULTY_NORMALIZATION = Map.of(
             "FACULTY_OF_COMPUTING", "FACULTY_OF_COMPUTING",
             "FACULTY_OF_BUSINESS", "FACULTY_OF_BUSINESS",
-                "FACULTY_OF_ARCHITECTURE", "FACULTY_OF_ARCHITECTURE",
-                "FACULTY_OF_ENGINEERING", "FACULTY_OF_ENGINEERING",
-                "FACULTY_OF_HUMANITIES_AND_SCIENCES", "FACULTY_OF_HUMANITIES_AND_SCIENCES"
-        );
+            "FACULTY_OF_ARCHITECTURE", "FACULTY_OF_ARCHITECTURE",
+            "FACULTY_OF_ENGINEERING", "FACULTY_OF_ENGINEERING",
+            "FACULTY_OF_HUMANITIES_AND_SCIENCES", "FACULTY_OF_HUMANITIES_AND_SCIENCES"
+    );
 
     private static final Map<String, String> CATEGORY_NORMALIZATION = Map.of(
             "REGISTRATION", "REGISTRATION",
@@ -62,11 +67,20 @@ public class TicketService {
 
     private static final Pattern EMAIL_PATTERN = Pattern.compile("^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$");
 
-    private final Map<Long, TicketResponse> tickets = new ConcurrentHashMap<>();
-    private final AtomicLong idCounter = new AtomicLong(0);
+    private final TicketRepository ticketRepository;
+    private final SequenceGeneratorService sequenceGeneratorService;
+
+    public TicketService(TicketRepository ticketRepository, SequenceGeneratorService sequenceGeneratorService) {
+        this.ticketRepository = ticketRepository;
+        this.sequenceGeneratorService = sequenceGeneratorService;
+    }
 
     @PostConstruct
     public void seedTickets() {
+        if (ticketRepository.count() > 0) {
+            return;
+        }
+
         createTicket(new TicketRequest(
                 "System User",
                 "system@campus.local",
@@ -85,7 +99,7 @@ public class TicketService {
     public TicketResponse createTicket(TicketRequest request) {
         ValidatedTicket validated = validateAndNormalize(request);
 
-        long nextId = idCounter.incrementAndGet();
+        long nextId = sequenceGeneratorService.generateSequence(TICKET_SEQUENCE_NAME);
         TicketResponse created = new TicketResponse(
                 nextId,
                 validated.reporterName(),
@@ -105,22 +119,20 @@ public class TicketService {
                 validated.attachments()
         );
 
-        tickets.put(nextId, created);
-        return created;
+        return ticketRepository.save(created);
     }
 
-        public List<TicketResponse> listTickets(String reporterEmail, String status, String registerNumber) {
+    public List<TicketResponse> listTickets(String reporterEmail, String status, String registerNumber) {
         String normalizedReporterEmail = normalizeFilterValue(reporterEmail).toLowerCase(Locale.ROOT);
         String normalizedStatus = normalizeEnumFilter(status, STATUS_NORMALIZATION, "status");
         String normalizedRegisterNumber = normalizeFilterValue(registerNumber).toUpperCase(Locale.ROOT);
 
-        return tickets.values().stream()
-                .sorted((left, right) -> Long.compare(right.id(), left.id()))
+        return ticketRepository.findAll(Sort.by(Sort.Direction.DESC, "id")).stream()
                 .filter(ticket -> normalizedReporterEmail.isBlank()
                         || ticket.reporterEmail().equalsIgnoreCase(normalizedReporterEmail))
                 .filter(ticket -> normalizedStatus.isBlank() || ticket.status().equals(normalizedStatus))
-            .filter(ticket -> normalizedRegisterNumber.isBlank()
-                || ticket.registerNumber().contains(normalizedRegisterNumber))
+                .filter(ticket -> normalizedRegisterNumber.isBlank()
+                        || ticket.registerNumber().contains(normalizedRegisterNumber))
                 .toList();
     }
 
@@ -160,17 +172,26 @@ public class TicketService {
                 existing.attachments()
         );
 
-        tickets.put(id, updated);
-        return updated;
+            return ticketRepository.save(updated);
     }
 
-    public TicketResponse addAdminComment(Long id, String comment) {
+    public TicketResponse addAdminComment(Long id, AdminCommentRequest request) {
         TicketResponse existing = findExistingTicket(id);
-        String normalizedComment = normalizeRequiredText(comment, "Comment cannot be empty");
+        String normalizedComment = normalizeFilterValue(request == null ? null : request.comment());
+        List<TicketAttachmentResponse> adminAttachments = normalizeAttachments(
+                request == null ? List.of() : request.attachments(),
+                UPLOADED_BY_ADMIN
+        );
 
         if (!"IN_PROGRESS".equals(existing.status())) {
             throw new IllegalArgumentException("Admin response is allowed only for in-progress tickets");
         }
+
+        if (normalizedComment.isBlank() && adminAttachments.isEmpty()) {
+            throw new IllegalArgumentException("Provide a comment or at least one attachment");
+        }
+
+        List<TicketAttachmentResponse> mergedAttachments = mergeAttachments(existing.attachments(), adminAttachments);
 
         TicketResponse updated = new TicketResponse(
                 existing.id(),
@@ -188,20 +209,32 @@ public class TicketService {
                 existing.createdAt(),
                 LocalDateTime.now(),
                 normalizedComment,
-                existing.attachments()
+                mergedAttachments
         );
 
-        tickets.put(id, updated);
-        return updated;
+            return ticketRepository.save(updated);
+    }
+
+    private List<TicketAttachmentResponse> mergeAttachments(
+            List<TicketAttachmentResponse> existingAttachments,
+            List<TicketAttachmentResponse> newAttachments
+    ) {
+        if (newAttachments == null || newAttachments.isEmpty()) {
+            return existingAttachments == null ? List.of() : existingAttachments;
+        }
+
+        List<TicketAttachmentResponse> merged = new ArrayList<>();
+        if (existingAttachments != null && !existingAttachments.isEmpty()) {
+            merged.addAll(existingAttachments);
+        }
+        merged.addAll(newAttachments);
+
+        return List.copyOf(merged);
     }
 
     private TicketResponse findExistingTicket(Long id) {
-        TicketResponse ticket = tickets.get(id);
-        if (ticket == null) {
-            throw new NoSuchElementException("Ticket not found");
-        }
-
-        return ticket;
+        return ticketRepository.findById(id)
+                .orElseThrow(() -> new NoSuchElementException("Ticket not found"));
     }
 
     private ValidatedTicket validateAndNormalize(TicketRequest request) {
@@ -230,7 +263,10 @@ public class TicketService {
         String priority = normalizeRequiredEnum(request.priority(), PRIORITY_NORMALIZATION, "priority");
         String location = normalizeRequiredText(request.location(), "Location is required");
         String description = normalizeRequiredText(request.description(), "Description is required");
-        List<TicketAttachmentResponse> attachments = normalizeAttachments(request.attachments());
+        List<TicketAttachmentResponse> attachments = normalizeAttachments(
+                request.attachments(),
+                UPLOADED_BY_STUDENT
+        );
 
         return new ValidatedTicket(
                 reporterName,
@@ -247,7 +283,10 @@ public class TicketService {
         );
     }
 
-    private List<TicketAttachmentResponse> normalizeAttachments(List<TicketAttachmentRequest> attachments) {
+    private List<TicketAttachmentResponse> normalizeAttachments(
+            List<TicketAttachmentRequest> attachments,
+            String defaultUploadedBy
+    ) {
         if (attachments == null || attachments.isEmpty()) {
             return List.of();
         }
@@ -257,11 +296,11 @@ public class TicketService {
         }
 
         return attachments.stream()
-                .map(this::normalizeAttachment)
+                .map(attachment -> normalizeAttachment(attachment, defaultUploadedBy))
                 .toList();
     }
 
-    private TicketAttachmentResponse normalizeAttachment(TicketAttachmentRequest attachment) {
+    private TicketAttachmentResponse normalizeAttachment(TicketAttachmentRequest attachment, String defaultUploadedBy) {
         if (attachment == null) {
             throw new IllegalArgumentException("Attachment is missing");
         }
@@ -290,13 +329,32 @@ public class TicketService {
                 : attachment.sizeInBytes();
 
         String normalizedContentType = contentType.isBlank() ? "application/octet-stream" : contentType;
+        String normalizedUploadedBy = normalizeAttachmentSource(attachment.uploadedBy(), defaultUploadedBy);
 
         return new TicketAttachmentResponse(
                 fileName,
                 normalizedContentType,
                 normalizedSize,
-                dataBase64
+                dataBase64,
+                normalizedUploadedBy
         );
+    }
+
+    private String normalizeAttachmentSource(String uploadedBy, String defaultUploadedBy) {
+        String normalized = normalizeFilterValue(uploadedBy)
+                .replace('-', '_')
+                .replace(' ', '_')
+                .toUpperCase(Locale.ROOT);
+
+        if (normalized.isBlank()) {
+            return defaultUploadedBy;
+        }
+
+        if (!UPLOADED_BY_ADMIN.equals(normalized) && !UPLOADED_BY_STUDENT.equals(normalized)) {
+            throw new IllegalArgumentException("Invalid attachment source");
+        }
+
+        return normalized;
     }
 
     private String normalizeRequiredText(String value, String message) {

@@ -258,17 +258,63 @@
   font-size: 0.86rem;
 }
 
-.ticket-meta-grid strong,
-.ticket-admin-comment strong {
+.ticket-meta-grid strong {
   color: #1e2f5b;
 }
 
 .ticket-admin-comment {
-  margin-top: 0.55rem;
+  margin: 0.42rem 0 0;
   padding: 0.55rem 0.62rem;
   border-radius: 10px;
-  background: #edf3ff;
-  color: #334d87;
+  border: 1px solid #d8e4ff;
+  background: #ffffff;
+  color: #243d73;
+  line-height: 1.58;
+}
+
+.ticket-admin-response-block {
+  margin-top: 0.55rem;
+  padding: 0.58rem 0.62rem;
+  border-radius: 10px;
+  border: 1px solid #cddcff;
+  background: linear-gradient(180deg, #eef4ff, #e6efff);
+}
+
+.ticket-admin-response-block > strong {
+  color: #19346b;
+}
+
+.ticket-admin-attachments {
+  margin-top: 0.5rem;
+  border: 1px solid #d8e4ff;
+  border-radius: 10px;
+  padding: 0.48rem 0.58rem;
+  background: #f8fbff;
+}
+
+.ticket-admin-attachments strong {
+  color: #1e2f5b;
+}
+
+.ticket-admin-attachments ul {
+  margin: 0.35rem 0 0;
+  padding-left: 1.1rem;
+  display: grid;
+  gap: 0.28rem;
+}
+
+.ticket-admin-attachments li {
+  display: flex;
+  gap: 0.5rem;
+  align-items: baseline;
+  color: #456091;
+  font-size: 0.84rem;
+}
+
+.ticket-admin-attachments a {
+  color: #214faf;
+  text-decoration: underline;
+  word-break: break-all;
 }
 
 .ticket-attachments {
@@ -355,6 +401,13 @@
   align-items: center;
   justify-content: space-between;
   gap: 0.7rem;
+}
+
+.admin-ticket-list-head-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.55rem;
 }
 
 .admin-ticket-list-head h3,
@@ -517,6 +570,21 @@
   color: #40527f;
 }
 
+.admin-ticket-attachment-field {
+  margin-top: 0.7rem;
+}
+
+.admin-ticket-attachment-field input[type="file"] {
+  margin-top: 0.3rem;
+  width: 100%;
+  border: 1px solid #d5dff9;
+  border-radius: 10px;
+  padding: 0.5rem 0.66rem;
+  font: inherit;
+  color: #1f2e55;
+  background: #ffffff;
+}
+
 .admin-ticket-actions {
   margin-top: 0.75rem;
   display: flex;
@@ -568,5 +636,10 @@
 
   .admin-ticket-detail-grid {
     grid-template-columns: 1fr;
+  }
+
+  .admin-ticket-list-head-actions {
+    width: 100%;
+    justify-content: flex-start;
   }
 }

@@ -27,7 +27,7 @@ function normalizeTicket(ticket) {
     priority: ticket?.priority || "MEDIUM",
     location: ticket?.location || "",
     description: ticket?.description || "",
-    status: ticket?.status || "OPEN",
+    status: ticket?.status || "PENDING",
     createdAt: ticket?.createdAt || null,
     updatedAt: ticket?.updatedAt || null,
     adminComment: ticket?.adminComment || "",
@@ -37,6 +37,7 @@ function normalizeTicket(ticket) {
           contentType: attachment?.contentType || "application/octet-stream",
           sizeInBytes: Number(attachment?.sizeInBytes) || 0,
           dataBase64: attachment?.dataBase64 || "",
+          uploadedBy: attachment?.uploadedBy || "UPLOADED_BY_STUDENT",
         }))
       : [],
   };

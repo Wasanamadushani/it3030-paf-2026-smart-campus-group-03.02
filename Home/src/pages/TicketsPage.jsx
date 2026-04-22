@@ -34,7 +34,7 @@ const FACULTY_OPTIONS = [
 
 const STATUS_FILTER_OPTIONS = [
   { value: "ALL", label: "All" },
-  { value: "OPEN", label: "Open" },
+  { value: "PENDING", label: "Pending" },
   { value: "IN_PROGRESS", label: "In Progress" },
   { value: "RESOLVED", label: "Resolved" },
   { value: "CLOSED", label: "Closed" },
@@ -124,6 +124,21 @@ function buildAttachmentDataUrl(attachment) {
 
   const contentType = attachment.contentType || "application/octet-stream";
   return `data:${contentType};base64,${attachment.dataBase64}`;
+}
+
+function splitAttachmentsByOwner(attachments = []) {
+  const studentAttachments = [];
+  const adminAttachments = [];
+
+  attachments.forEach((attachment) => {
+    if (String(attachment?.uploadedBy || "").toUpperCase() === "UPLOADED_BY_ADMIN") {
+      adminAttachments.push(attachment);
+    } else {
+      studentAttachments.push(attachment);
+    }
+  });
+
+  return { studentAttachments, adminAttachments };
 }
 
 export default function TicketsPage() {
@@ -259,6 +274,7 @@ export default function TicketsPage() {
           contentType: file.type || "application/octet-stream",
           sizeInBytes: file.size,
           dataBase64: await readFileAsBase64(file),
+          uploadedBy: "UPLOADED_BY_STUDENT",
         }))
       );
 
@@ -518,69 +534,97 @@ export default function TicketsPage() {
 
             {tickets.length > 0 && (
               <div className="ticket-list">
-                {tickets.map((ticket) => (
-                  <article key={ticket.id} className="ticket-card">
-                    <div className="ticket-card-head">
-                      <h3>{ticket.title}</h3>
-                      <span className={`ticket-status ticket-status-${ticket.status.toLowerCase()}`}>
-                        {toLabel(ticket.status)}
-                      </span>
-                    </div>
+                {tickets.map((ticket) => {
+                  const { studentAttachments, adminAttachments } = splitAttachmentsByOwner(ticket.attachments || []);
 
-                    <p className="ticket-description">{ticket.description}</p>
-
-                    <div className="ticket-meta-grid">
-                      <span>
-                        <strong>Register No:</strong> {ticket.registerNumber || "-"}
-                      </span>
-                      <span>
-                        <strong>Faculty:</strong> {toLabel(ticket.faculty) || "-"}
-                      </span>
-                      <span>
-                        <strong>Contact:</strong> {ticket.contactNumber || "-"}
-                      </span>
-                      <span>
-                        <strong>Category:</strong> {toLabel(ticket.category)}
-                      </span>
-                      <span>
-                        <strong>Priority:</strong> {toLabel(ticket.priority)}
-                      </span>
-                      <span>
-                        <strong>Location:</strong> {ticket.location}
-                      </span>
-                      <span>
-                        <strong>Created:</strong> {formatDateTime(ticket.createdAt)}
-                      </span>
-                    </div>
-
-                    {ticket.adminComment && (
-                      <p className="ticket-admin-comment">
-                        <strong>Admin:</strong> {ticket.adminComment}
-                      </p>
-                    )}
-
-                    {ticket.attachments?.length > 0 && (
-                      <div className="ticket-attachments">
-                        <strong>Attachments:</strong>
-                        <ul>
-                          {ticket.attachments.map((attachment, index) => (
-                            <li key={`${ticket.id}-${attachment.fileName}-${index}`}>
-                              <a
-                                href={buildAttachmentDataUrl(attachment)}
-                                download={attachment.fileName}
-                                target="_blank"
-                                rel="noreferrer"
-                              >
-                                {attachment.fileName}
-                              </a>
-                              <span>{formatBytes(attachment.sizeInBytes)}</span>
-                            </li>
-                          ))}
-                        </ul>
+                  return (
+                    <article key={ticket.id} className="ticket-card">
+                      <div className="ticket-card-head">
+                        <h3>{ticket.title}</h3>
+                        <span className={`ticket-status ticket-status-${ticket.status.toLowerCase()}`}>
+                          {toLabel(ticket.status)}
+                        </span>
                       </div>
-                    )}
-                  </article>
-                ))}
+
+                      <p className="ticket-description">{ticket.description}</p>
+
+                      <div className="ticket-meta-grid">
+                        <span>
+                          <strong>Register No:</strong> {ticket.registerNumber || "-"}
+                        </span>
+                        <span>
+                          <strong>Faculty:</strong> {toLabel(ticket.faculty) || "-"}
+                        </span>
+                        <span>
+                          <strong>Contact:</strong> {ticket.contactNumber || "-"}
+                        </span>
+                        <span>
+                          <strong>Category:</strong> {toLabel(ticket.category)}
+                        </span>
+                        <span>
+                          <strong>Priority:</strong> {toLabel(ticket.priority)}
+                        </span>
+                        <span>
+                          <strong>Location:</strong> {ticket.location}
+                        </span>
+                        <span>
+                          <strong>Created:</strong> {formatDateTime(ticket.createdAt)}
+                        </span>
+                      </div>
+
+                      {studentAttachments.length > 0 && (
+                        <div className="ticket-attachments">
+                          <strong>Your Attachments:</strong>
+                          <ul>
+                            {studentAttachments.map((attachment, index) => (
+                              <li key={`${ticket.id}-${attachment.fileName}-${index}`}>
+                                <a
+                                  href={buildAttachmentDataUrl(attachment)}
+                                  download={attachment.fileName}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                >
+                                  {attachment.fileName}
+                                </a>
+                                <span>{formatBytes(attachment.sizeInBytes)}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+
+                      {(ticket.adminComment || adminAttachments.length > 0) && (
+                        <div className="ticket-admin-response-block">
+                          <strong>Admin Response:</strong>
+                          <p className="ticket-admin-comment">
+                            {ticket.adminComment || "Admin shared attachments for this ticket."}
+                          </p>
+
+                          {adminAttachments.length > 0 && (
+                            <div className="ticket-admin-attachments">
+                              <strong>Admin Attachments:</strong>
+                              <ul>
+                                {adminAttachments.map((attachment, index) => (
+                                  <li key={`${ticket.id}-admin-${attachment.fileName}-${index}`}>
+                                    <a
+                                      href={buildAttachmentDataUrl(attachment)}
+                                      download={attachment.fileName}
+                                      target="_blank"
+                                      rel="noreferrer"
+                                    >
+                                      {attachment.fileName}
+                                    </a>
+                                    <span>{formatBytes(attachment.sizeInBytes)}</span>
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </article>
+                  );
+                })}
               </div>
             )}
           </article>
