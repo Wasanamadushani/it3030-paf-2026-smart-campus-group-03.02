@@ -32,6 +32,7 @@ public class TicketService {
     private static final long MAX_ATTACHMENT_BYTES = 5L * 1024L * 1024L;
     private static final Pattern REGISTER_NUMBER_PATTERN = Pattern.compile("^IT\\d{8}$");
     private static final Pattern CONTACT_NUMBER_PATTERN = Pattern.compile("^\\d{10}$");
+    private static final Pattern COURSE_CODE_PATTERN = Pattern.compile("^IT\\d{4}$");
 
     private static final Map<String, String> FACULTY_NORMALIZATION = Map.of(
             "FACULTY_OF_COMPUTING", "FACULTY_OF_COMPUTING",
@@ -291,6 +292,11 @@ public class TicketService {
         String priority = normalizeRequiredEnum(request.priority(), PRIORITY_NORMALIZATION, "priority");
         String courseCode = normalizeRequiredText(request.courseCode(), "Course code is required")
                 .toUpperCase(Locale.ROOT);
+
+        if (!COURSE_CODE_PATTERN.matcher(courseCode).matches()) {
+            throw new IllegalArgumentException("Course code must follow IT#### format");
+        }
+
         String year = normalizeRequiredEnum(request.year(), YEAR_NORMALIZATION, "year");
         String semester = normalizeRequiredEnum(request.semester(), SEMESTER_NORMALIZATION, "semester");
         String description = normalizeRequiredText(request.description(), "Description is required");

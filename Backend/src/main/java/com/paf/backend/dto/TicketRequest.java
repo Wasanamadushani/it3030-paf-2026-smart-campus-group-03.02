@@ -26,6 +26,7 @@ public record TicketRequest(
         @NotBlank(message = "Ticket priority is required")
         String priority,
         @NotBlank(message = "Course code is required")
+        @Pattern(regexp = "^IT\\d{4}$", message = "Course code must follow IT#### format")
         String courseCode,
         @NotBlank(message = "Year is required")
         String year,

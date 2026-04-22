@@ -171,7 +171,7 @@ async function respondToTicket(ticketId, payload) {
 export default function AdminTickets() {
   const fileInputRef = useRef(null);
   const [tickets, setTickets] = useState([]);
-  const [selectedTicket, setSelectedTicket] = useState(null);
+  const [selectedTicketId, setSelectedTicketId] = useState(null);
   const [registerNumberFilter, setRegisterNumberFilter] = useState("");
   const [responseMessage, setResponseMessage] = useState("");
   const [selectedFiles, setSelectedFiles] = useState([]);
@@ -181,22 +181,26 @@ export default function AdminTickets() {
   const [errorMessage, setErrorMessage] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
 
-  const selectedTicketId = selectedTicket?.id || null;
+  const selectedTicket = tickets.find((ticket) => ticket.id === selectedTicketId) || null;
   const studentAttachments = selectedTicket?.attachments?.filter((attachment) => !isAdminAttachment(attachment)) || [];
   const adminAttachments = selectedTicket?.attachments?.filter((attachment) => isAdminAttachment(attachment)) || [];
 
   useEffect(() => {
     if (!selectedTicketId) {
+      setResponseMessage("");
+      resetAttachmentInput();
       return;
     }
 
     const latestSelected = tickets.find((ticket) => ticket.id === selectedTicketId);
     if (latestSelected) {
-      setSelectedTicket(latestSelected);
-      if (latestSelected.adminComment) {
-        setResponseMessage(latestSelected.adminComment);
-      }
+      setResponseMessage(latestSelected.adminComment || "");
+      return;
     }
+
+    setSelectedTicketId(null);
+    setResponseMessage("");
+    resetAttachmentInput();
   }, [tickets, selectedTicketId]);
 
   async function loadTickets() {
@@ -215,13 +219,6 @@ export default function AdminTickets() {
       );
 
       setTickets(filteredTickets);
-      setSelectedTicket((currentSelected) => {
-        if (!currentSelected) {
-          return filteredTickets[0] || null;
-        }
-
-        return filteredTickets.find((ticket) => ticket.id === currentSelected.id) || filteredTickets[0] || null;
-      });
     } catch (error) {
       setErrorMessage(error.message || "Failed to load tickets");
     } finally {
@@ -241,11 +238,46 @@ export default function AdminTickets() {
   }
 
   function handleSelectTicket(ticket) {
-    setSelectedTicket(ticket);
+    setSelectedTicketId(ticket.id);
     setResponseMessage(ticket.adminComment || "");
     resetAttachmentInput();
     setSuccessMessage("");
     setErrorMessage("");
+  }
+
+  async function handleOpenTicketFromList(ticket) {
+    setIsSubmitting(true);
+    setErrorMessage("");
+    setSuccessMessage("");
+
+    try {
+      if (!showHistory && ticket.status === "PENDING") {
+        await openTicket(ticket.id);
+        setSuccessMessage("Ticket opened. Student now sees In Progress.");
+        const refreshedTickets = await getAdminTickets({
+          registerNumber: registerNumberFilter,
+        });
+        const filteredTickets = refreshedTickets.filter((item) =>
+          showHistory
+            ? item.status === "RESOLVED" || item.status === "CLOSED"
+            : item.status !== "RESOLVED" && item.status !== "CLOSED"
+        );
+        setTickets(filteredTickets);
+        const latestTicket = filteredTickets.find((item) => item.id === ticket.id) || null;
+        if (latestTicket) {
+          handleSelectTicket(latestTicket);
+        } else {
+          setSelectedTicketId(null);
+        }
+        return;
+      }
+
+      handleSelectTicket(ticket);
+    } catch (error) {
+      setErrorMessage(error.message || "Failed to open ticket");
+    } finally {
+      setIsSubmitting(false);
+    }
   }
 
   function handleAttachmentsChange(event) {
@@ -271,26 +303,6 @@ export default function AdminTickets() {
   async function handleSearch(event) {
     event.preventDefault();
     await loadTickets();
-  }
-
-  async function handleOpenTicket() {
-    if (!selectedTicket) {
-      return;
-    }
-
-    setIsSubmitting(true);
-    setErrorMessage("");
-    setSuccessMessage("");
-
-    try {
-      await openTicket(selectedTicket.id);
-      setSuccessMessage("Ticket opened. Student now sees In Progress.");
-      await loadTickets();
-    } catch (error) {
-      setErrorMessage(error.message || "Failed to open ticket");
-    } finally {
-      setIsSubmitting(false);
-    }
   }
 
   async function handleRespondTicket() {
@@ -381,29 +393,37 @@ export default function AdminTickets() {
 
           <div className="admin-ticket-list">
             {tickets.map((ticket) => {
-              const isSelected = selectedTicket?.id === ticket.id;
+              const isSelected = selectedTicketId === ticket.id;
               return (
-                <button
+                <article
                   key={ticket.id}
-                  type="button"
                   className={isSelected ? "admin-ticket-item selected" : "admin-ticket-item"}
-                  onClick={() => handleSelectTicket(ticket)}
                 >
-                  <div>
+                  <div className="admin-ticket-item-main">
                     <strong>{ticket.title}</strong>
                     <p>{ticket.registerNumber}</p>
                   </div>
-                  <span className={`admin-ticket-badge status-${String(ticket.status || "").toLowerCase()}`}>
-                    {toLabel(ticket.status)}
-                  </span>
-                </button>
+                  <div className="admin-ticket-item-actions">
+                    <span className={`admin-ticket-badge status-${String(ticket.status || "").toLowerCase()}`}>
+                      {toLabel(ticket.status)}
+                    </span>
+                    <button
+                      type="button"
+                      className="admin-ticket-btn"
+                      disabled={isSubmitting}
+                      onClick={() => handleOpenTicketFromList(ticket)}
+                    >
+                      {showHistory ? "View Ticket" : "Open Ticket"}
+                    </button>
+                  </div>
+                </article>
               );
             })}
           </div>
         </article>
 
         <article className="admin-ticket-detail-card">
-          {!selectedTicket && <p className="admin-ticket-note">Select a ticket to manage.</p>}
+          {!selectedTicket && <p className="admin-ticket-note">Open a ticket from the list to view and manage its details.</p>}
 
           {selectedTicket && (
             <>
@@ -501,14 +521,6 @@ export default function AdminTickets() {
               </div>
 
               <div className="admin-ticket-actions">
-                <button
-                  type="button"
-                  className="admin-ticket-btn"
-                  disabled={showHistory || isSubmitting || selectedTicket.status !== "PENDING"}
-                  onClick={handleOpenTicket}
-                >
-                  Open Ticket
-                </button>
                 <button
                   type="button"
                   className="admin-ticket-btn"

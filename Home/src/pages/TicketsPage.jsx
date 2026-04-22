@@ -45,6 +45,7 @@ const MAX_ATTACHMENT_FILES = 5;
 const MAX_ATTACHMENT_BYTES = 5 * 1024 * 1024;
 const REGISTER_NUMBER_REGEX = /^IT\d{8}$/;
 const CONTACT_NUMBER_REGEX = /^\d{10}$/;
+const COURSE_CODE_REGEX = /^IT\d{4}$/;
 
 const DEFAULT_FORM = {
   reporterName: "",
@@ -167,10 +168,15 @@ export default function TicketsPage({ view = "create" }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
+  const [selectedTicketId, setSelectedTicketId] = useState(null);
   const fileInputRef = useRef(null);
   const isListView = view === "list";
 
   const hasEmail = form.reporterEmail.trim().length > 0;
+  const selectedTicket = useMemo(
+    () => tickets.find((ticket) => ticket.id === selectedTicketId) || null,
+    [tickets, selectedTicketId]
+  );
 
   useEffect(() => {
     try {
@@ -213,6 +219,21 @@ export default function TicketsPage({ view = "create" }) {
 
     loadTickets();
   }, [statusFilter, hasEmail, isListView]);
+
+  useEffect(() => {
+    if (!isListView) {
+      return;
+    }
+
+    if (tickets.length === 0) {
+      setSelectedTicketId(null);
+      return;
+    }
+
+    setSelectedTicketId((currentId) => (
+      tickets.some((ticket) => ticket.id === currentId) ? currentId : null
+    ));
+  }, [tickets, isListView]);
 
   async function loadTickets() {
     if (!form.reporterEmail.trim()) {
@@ -283,6 +304,11 @@ export default function TicketsPage({ view = "create" }) {
 
     if (!CONTACT_NUMBER_REGEX.test(form.contactNumber.trim())) {
       setErrorMessage("Contact number must contain exactly 10 digits.");
+      return;
+    }
+
+    if (!COURSE_CODE_REGEX.test(form.courseCode.trim().toUpperCase())) {
+      setErrorMessage("Course code must follow IT#### format. Example: IT3030.");
       return;
     }
 
@@ -494,8 +520,11 @@ export default function TicketsPage({ view = "create" }) {
                 value={form.courseCode}
                 onChange={(event) => handleFieldChange("courseCode", event.target.value.toUpperCase())}
                 placeholder="IT3030"
+                pattern="^IT\d{4}$"
+                title="Format: IT followed by 4 digits"
                 required
               />
+              <p className="ticket-helper-text">Format: IT + 4 digits (example: IT3030).</p>
 
               <div className="ticket-form-row">
                 <div>
@@ -608,85 +637,79 @@ export default function TicketsPage({ view = "create" }) {
             )}
 
             {tickets.length > 0 && (
-              <div className="ticket-list">
+              <div className="ticket-list ticket-summary-list">
                 {tickets.map((ticket) => {
+                  const isSelected = selectedTicketId === ticket.id;
                   const { studentAttachments, adminAttachments } = splitAttachmentsByOwner(ticket.attachments || []);
 
                   return (
-                    <article key={ticket.id} className="ticket-card">
-                      <div className="ticket-card-head">
-                        <h3>{ticket.title}</h3>
-                        <span className={`ticket-status ticket-status-${ticket.status.toLowerCase()}`}>
-                          {toLabel(ticket.status)}
-                        </span>
-                      </div>
-
-                      <p className="ticket-description">{ticket.description}</p>
-
-                      <div className="ticket-meta-grid">
-                        <span>
-                          <strong>Register No:</strong> {ticket.registerNumber || "-"}
-                        </span>
-                        <span>
-                          <strong>Faculty:</strong> {toLabel(ticket.faculty) || "-"}
-                        </span>
-                        <span>
-                          <strong>Contact:</strong> {ticket.contactNumber || "-"}
-                        </span>
-                        <span>
-                          <strong>Category:</strong> {toLabel(ticket.category)}
-                        </span>
-                        <span>
-                          <strong>Priority:</strong> {toLabel(ticket.priority)}
-                        </span>
-                        <span>
-                          <strong>Course Code:</strong> {ticket.courseCode || "-"}
-                        </span>
-                        <span>
-                          <strong>Year:</strong> {ticket.year || "-"}
-                        </span>
-                        <span>
-                          <strong>Semester:</strong> {ticket.semester || "-"}
-                        </span>
-                        <span>
-                          <strong>Created:</strong> {formatDateTime(ticket.createdAt)}
-                        </span>
-                      </div>
-
-                      {studentAttachments.length > 0 && (
-                        <div className="ticket-attachments">
-                          <strong>Your Attachments:</strong>
-                          <ul>
-                            {studentAttachments.map((attachment, index) => (
-                              <li key={`${ticket.id}-${attachment.fileName}-${index}`}>
-                                <a
-                                  href={buildAttachmentDataUrl(attachment)}
-                                  download={attachment.fileName}
-                                  target="_blank"
-                                  rel="noreferrer"
-                                >
-                                  {attachment.fileName}
-                                </a>
-                                <span>{formatBytes(attachment.sizeInBytes)}</span>
-                              </li>
-                            ))}
-                          </ul>
+                    <article key={ticket.id} className="ticket-summary-entry">
+                      <div className={isSelected ? "ticket-summary-item selected" : "ticket-summary-item"}>
+                        <div className="ticket-summary-main">
+                          <h3>{ticket.title}</h3>
+                          <p>{formatDateTime(ticket.createdAt)}</p>
                         </div>
-                      )}
+                        <div className="ticket-summary-actions">
+                          <span className={`ticket-status ticket-status-${ticket.status.toLowerCase()}`}>
+                            {toLabel(ticket.status)}
+                          </span>
+                          <button
+                            type="button"
+                            className="ticket-refresh-btn ticket-view-btn"
+                            onClick={() => setSelectedTicketId((currentId) => (currentId === ticket.id ? null : ticket.id))}
+                          >
+                            {isSelected ? "Hide Ticket" : "View Ticket"}
+                          </button>
+                        </div>
+                      </div>
 
-                      {(ticket.adminComment || adminAttachments.length > 0) && (
-                        <div className="ticket-admin-response-block">
-                          <strong>Admin Response:</strong>
-                          <p className="ticket-admin-comment">
-                            {ticket.adminComment || "Admin shared attachments for this ticket."}
-                          </p>
+                      {isSelected && (
+                        <article className="ticket-card ticket-detail-card inline">
+                          <div className="ticket-card-head">
+                            <h3>{ticket.title}</h3>
+                            <span className={`ticket-status ticket-status-${ticket.status.toLowerCase()}`}>
+                              {toLabel(ticket.status)}
+                            </span>
+                          </div>
 
-                          {adminAttachments.length > 0 && (
-                            <div className="ticket-admin-attachments">
-                              <strong>Admin Attachments:</strong>
+                          <p className="ticket-description">{ticket.description}</p>
+
+                          <div className="ticket-meta-grid">
+                            <span>
+                              <strong>Register No:</strong> {ticket.registerNumber || "-"}
+                            </span>
+                            <span>
+                              <strong>Faculty:</strong> {toLabel(ticket.faculty) || "-"}
+                            </span>
+                            <span>
+                              <strong>Contact:</strong> {ticket.contactNumber || "-"}
+                            </span>
+                            <span>
+                              <strong>Category:</strong> {toLabel(ticket.category)}
+                            </span>
+                            <span>
+                              <strong>Priority:</strong> {toLabel(ticket.priority)}
+                            </span>
+                            <span>
+                              <strong>Course Code:</strong> {ticket.courseCode || "-"}
+                            </span>
+                            <span>
+                              <strong>Year:</strong> {ticket.year || "-"}
+                            </span>
+                            <span>
+                              <strong>Semester:</strong> {ticket.semester || "-"}
+                            </span>
+                            <span>
+                              <strong>Created:</strong> {formatDateTime(ticket.createdAt)}
+                            </span>
+                          </div>
+
+                          {studentAttachments.length > 0 && (
+                            <div className="ticket-attachments">
+                              <strong>Your Attachments:</strong>
                               <ul>
-                                {adminAttachments.map((attachment, index) => (
-                                  <li key={`${ticket.id}-admin-${attachment.fileName}-${index}`}>
+                                {studentAttachments.map((attachment, index) => (
+                                  <li key={`${ticket.id}-${attachment.fileName}-${index}`}>
                                     <a
                                       href={buildAttachmentDataUrl(attachment)}
                                       download={attachment.fileName}
@@ -701,7 +724,37 @@ export default function TicketsPage({ view = "create" }) {
                               </ul>
                             </div>
                           )}
-                        </div>
+
+                          {(ticket.adminComment || adminAttachments.length > 0) && (
+                            <div className="ticket-admin-response-block">
+                              <strong>Admin Response:</strong>
+                              <p className="ticket-admin-comment">
+                                {ticket.adminComment || "Admin shared attachments for this ticket."}
+                              </p>
+
+                              {adminAttachments.length > 0 && (
+                                <div className="ticket-admin-attachments">
+                                  <strong>Admin Attachments:</strong>
+                                  <ul>
+                                    {adminAttachments.map((attachment, index) => (
+                                      <li key={`${ticket.id}-admin-${attachment.fileName}-${index}`}>
+                                        <a
+                                          href={buildAttachmentDataUrl(attachment)}
+                                          download={attachment.fileName}
+                                          target="_blank"
+                                          rel="noreferrer"
+                                        >
+                                          {attachment.fileName}
+                                        </a>
+                                        <span>{formatBytes(attachment.sizeInBytes)}</span>
+                                      </li>
+                                    ))}
+                                  </ul>
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </article>
                       )}
                     </article>
                   );
