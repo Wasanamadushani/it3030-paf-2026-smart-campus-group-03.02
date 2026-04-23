@@ -67,7 +67,6 @@ export default function Navbar({ userName = "Alex Silva", role = "USER" }) {
 
   function persistCurrentUser(user) {
     setCurrentUser(user);
-
     try {
       if (user) {
         localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(user));
@@ -214,9 +213,6 @@ export default function Navbar({ userName = "Alex Silva", role = "USER" }) {
   function handleSignOut() {
     persistCurrentUser(null);
     setIsProfileOpen(false);
-  }
-
-  function goToCustomerDashboard() {
     const dashboard = document.getElementById("customer-dashboard");
     if (dashboard) {
       dashboard.scrollIntoView({ behavior: "smooth", block: "start" });

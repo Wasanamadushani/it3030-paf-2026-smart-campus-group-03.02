@@ -10,7 +10,7 @@ import AdminBookings from "./pages/Admin/AdminBookings";
 import AdminTickets from "./pages/Admin/AdminTickets";
 import AdminNotifications from "./pages/Admin/AdminNotifications";
 import FacilityDetails from "./pages/FacilityDetails";
-import BookingPage from "./pages/BookingPage";
+import BookingPage from "./pages/booking/BookingPage";
 import TicketsPage from "./pages/TicketsPage";
 import "./styles/home.css";
 
