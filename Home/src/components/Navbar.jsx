@@ -76,7 +76,6 @@ export default function Navbar({ userName = "Alex Silva", role = "USER" }) {
     } catch (error) {
       // Ignore storage errors and keep in-memory auth state.
     }
-    window.dispatchEvent(new Event("sch:authchange"));
   }
 
   function clearFieldError(fieldName) {
@@ -145,7 +144,7 @@ export default function Navbar({ userName = "Alex Silva", role = "USER" }) {
       setEmail("");
       setPassword("");
       setIsProfileOpen(false);
-      goToCustomerDashboard(data);
+      goToCustomerDashboard();
     } catch (error) {
       setErrorMessage("Unable to reach backend server");
     } finally {
@@ -190,7 +189,7 @@ export default function Navbar({ userName = "Alex Silva", role = "USER" }) {
       setFieldErrors({});
       setIsProfileOpen(false);
       setAuthMode("login");
-      goToCustomerDashboard(data);
+      goToCustomerDashboard();
     } catch (error) {
       setErrorMessage("Unable to reach backend server");
     } finally {
@@ -214,15 +213,6 @@ export default function Navbar({ userName = "Alex Silva", role = "USER" }) {
   function handleSignOut() {
     persistCurrentUser(null);
     setIsProfileOpen(false);
-    window.dispatchEvent(new Event("sch:authchange"));
-  }
-
-  function goToCustomerDashboard(user) {
-    const isAdmin = (user ?? currentUser)?.role === "ADMIN";
-    if (isAdmin) {
-      window.location.href = "/admin/dashboard";
-      return;
-    }
     const dashboard = document.getElementById("customer-dashboard");
     if (dashboard) {
       dashboard.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -273,7 +263,7 @@ export default function Navbar({ userName = "Alex Silva", role = "USER" }) {
 
     window.history.replaceState(null, "", window.location.pathname);
     setTimeout(() => {
-      goToCustomerDashboard(googleUser);
+      goToCustomerDashboard();
     }, 0);
   }, []);
 

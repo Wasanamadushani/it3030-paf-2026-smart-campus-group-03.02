@@ -2,12 +2,11 @@ import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import "../styles/adminSidebarLayout.css";
 
 const ADMIN_MENU_ITEMS = [
-  { to: "/admin/dashboard",    label: "Dashboard",    icon: "DB" },
-  { to: "/admin/facilities",   label: "Facilities",   icon: "FC" },
-  { to: "/admin/bookings",     label: "Bookings",     icon: "BK" },
-  { to: "/admin/verify",       label: "Verify QR",    icon: "QR" },
-  { to: "/admin/tickets",      label: "Tickets",      icon: "TK" },
-  { to: "/admin/notifications",label: "Notifications",icon: "NT" },
+  { to: "/admin/dashboard", label: "Dashboard", icon: "DB" },
+  { to: "/admin/facilities", label: "Facilities", icon: "FC" },
+  { to: "/admin/bookings", label: "Bookings", icon: "BK" },
+  { to: "/admin/tickets", label: "Tickets", icon: "TK" },
+  { to: "/admin/notifications", label: "Notifications", icon: "NT" },
 ];
 
 const ADMIN_PAGE_META = {
@@ -22,10 +21,6 @@ const ADMIN_PAGE_META = {
   "/admin/bookings": {
     title: "Admin Bookings",
     subtitle: "Review and manage booking operations from this section.",
-  },
-  "/admin/verify": {
-    title: "QR Check-in Verify",
-    subtitle: "Scan or enter a booking ID to verify a QR check-in pass.",
   },
   "/admin/tickets": {
     title: "Admin Tickets",

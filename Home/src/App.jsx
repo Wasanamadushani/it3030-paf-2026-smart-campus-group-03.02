@@ -9,7 +9,6 @@ import ManageFacilities from "./pages/Admin/ManageFacilities";
 import AdminBookings from "./pages/Admin/AdminBookings";
 import AdminTickets from "./pages/Admin/AdminTickets";
 import AdminNotifications from "./pages/Admin/AdminNotifications";
-import AdminVerifyBooking from "./pages/Admin/AdminVerifyBooking";
 import FacilityDetails from "./pages/FacilityDetails";
 import BookingPage from "./pages/booking/BookingPage";
 import TicketsPage from "./pages/TicketsPage";
@@ -31,7 +30,6 @@ function App() {
           <Route path="bookings" element={<AdminBookings />} />
           <Route path="tickets" element={<AdminTickets />} />
           <Route path="notifications" element={<AdminNotifications />} />
-          <Route path="verify" element={<AdminVerifyBooking />} />
         </Route>
 
         <Route path="/facilities/view" element={<Navigate to="/view-facilities" replace />} />
