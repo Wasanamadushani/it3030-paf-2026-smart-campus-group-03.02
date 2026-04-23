@@ -147,6 +147,40 @@ public class TicketService {
         return ticketRepository.save(created);
     }
 
+    public TicketResponse updateTicket(Long id, TicketRequest request) {
+        TicketResponse existing = findExistingTicket(id);
+
+        if (!"PENDING".equals(existing.status())) {
+            throw new IllegalArgumentException("Only pending tickets can be updated");
+        }
+
+        TicketRequest normalizedRequest = preserveExistingAttachmentsWhenMissing(request, existing);
+        ValidatedTicket validated = validateAndNormalize(normalizedRequest);
+
+        TicketResponse updated = new TicketResponse(
+                existing.id(),
+                validated.reporterName(),
+                validated.reporterEmail(),
+                validated.registerNumber(),
+                validated.faculty(),
+                validated.contactNumber(),
+                validated.title(),
+                validated.category(),
+                validated.priority(),
+                validated.courseCode(),
+                validated.year(),
+                validated.semester(),
+                validated.description(),
+                existing.status(),
+                existing.createdAt(),
+                LocalDateTime.now(),
+                existing.adminComment(),
+                validated.attachments()
+        );
+
+        return ticketRepository.save(updated);
+    }
+
     public List<TicketResponse> listTickets(String reporterEmail, String status, String registerNumber) {
         String normalizedReporterEmail = normalizeFilterValue(reporterEmail).toLowerCase(Locale.ROOT);
         String normalizedStatus = normalizeEnumFilter(status, STATUS_NORMALIZATION, "status");
@@ -282,6 +316,40 @@ public class TicketService {
     private TicketResponse findExistingTicket(Long id) {
         return ticketRepository.findById(id)
                 .orElseThrow(() -> new NoSuchElementException("Ticket not found"));
+    }
+
+    private TicketRequest preserveExistingAttachmentsWhenMissing(TicketRequest request, TicketResponse existing) {
+        if (request != null && request.attachments() != null) {
+            return request;
+        }
+
+        List<TicketAttachmentRequest> attachments = existing.attachments() == null
+                ? List.of()
+                : existing.attachments().stream()
+                        .map(attachment -> new TicketAttachmentRequest(
+                                attachment.fileName(),
+                                attachment.contentType(),
+                                attachment.sizeInBytes(),
+                                attachment.dataBase64(),
+                                attachment.uploadedBy()
+                        ))
+                        .toList();
+
+        return new TicketRequest(
+                request.reporterName(),
+                request.reporterEmail(),
+                request.registerNumber(),
+                request.faculty(),
+                request.contactNumber(),
+                request.title(),
+                request.category(),
+                request.priority(),
+                request.courseCode(),
+                request.year(),
+                request.semester(),
+                request.description(),
+                attachments
+        );
     }
 
     private ValidatedTicket validateAndNormalize(TicketRequest request) {

@@ -101,6 +101,15 @@ export async function createTicket(ticketPayload) {
   return normalizeTicket(payload);
 }
 
+export async function updateTicket(id, ticketPayload) {
+  const payload = await requestTickets(`/${Number(id)}`, {
+    method: "PUT",
+    body: JSON.stringify(ticketPayload),
+  });
+
+  return normalizeTicket(payload);
+}
+
 export async function updateTicketStatus(id, status) {
   const payload = await requestTickets(`/${Number(id)}/status?status=${encodeURIComponent(status)}`, {
     method: "PATCH",
