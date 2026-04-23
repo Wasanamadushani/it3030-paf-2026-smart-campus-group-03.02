@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
-import { createTicket, deleteTicket, getTickets } from "../data/ticketStore";
+import { createTicket, deleteTicket, getTickets, updateTicket } from "../data/ticketStore";
 import "../styles/tickets.css";
 
 const AUTH_STORAGE_KEY = "sch.currentUser";
@@ -169,7 +169,12 @@ export default function TicketsPage({ view = "create" }) {
   const [errorMessage, setErrorMessage] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
   const [selectedTicketId, setSelectedTicketId] = useState(null);
+  const [editingTicketId, setEditingTicketId] = useState(null);
+  const [editForm, setEditForm] = useState(DEFAULT_FORM);
+  const [editSelectedFiles, setEditSelectedFiles] = useState([]);
+  const [attachmentsToDelete, setAttachmentsToDelete] = useState([]);
   const fileInputRef = useRef(null);
+  const editFileInputRef = useRef(null);
   const isListView = view === "list";
 
   const hasEmail = form.reporterEmail.trim().length > 0;
@@ -235,6 +240,28 @@ export default function TicketsPage({ view = "create" }) {
     ));
   }, [tickets, isListView]);
 
+  useEffect(() => {
+    if (!isListView) {
+      return;
+    }
+
+    if (!editingTicketId) {
+      return;
+    }
+
+    const editingTicket = tickets.find((ticket) => ticket.id === editingTicketId);
+    if (!editingTicket) {
+      setEditingTicketId(null);
+      setEditForm(DEFAULT_FORM);
+      return;
+    }
+
+    if (editingTicket.status !== "PENDING") {
+      setEditingTicketId(null);
+      setEditForm(DEFAULT_FORM);
+    }
+  }, [tickets, editingTicketId, isListView]);
+
   async function loadTickets() {
     if (!form.reporterEmail.trim()) {
       setTickets([]);
@@ -261,6 +288,10 @@ export default function TicketsPage({ view = "create" }) {
     setForm((prev) => ({ ...prev, [field]: value }));
   }
 
+  function handleEditFieldChange(field, value) {
+    setEditForm((prev) => ({ ...prev, [field]: value }));
+  }
+
   function handleAttachmentsChange(event) {
     const files = Array.from(event.target.files || []);
     setErrorMessage("");
@@ -285,6 +316,36 @@ export default function TicketsPage({ view = "create" }) {
     }
 
     setSelectedFiles(files);
+  }
+
+  function handleEditAttachmentsChange(event, existingAttachmentCount = 0) {
+    const files = Array.from(event.target.files || []);
+    setErrorMessage("");
+
+    if (files.length + existingAttachmentCount > MAX_ATTACHMENT_FILES) {
+      setEditSelectedFiles([]);
+      setErrorMessage(`You can attach up to ${MAX_ATTACHMENT_FILES} files.`);
+      if (editFileInputRef.current) {
+        editFileInputRef.current.value = "";
+      }
+      return;
+    }
+
+    const invalidFile = files.find((file) => file.size > MAX_ATTACHMENT_BYTES);
+    if (invalidFile) {
+      setEditSelectedFiles([]);
+      setErrorMessage(`Each file must be 5 MB or smaller. Invalid file: ${invalidFile.name}`);
+      if (editFileInputRef.current) {
+        editFileInputRef.current.value = "";
+      }
+      return;
+    }
+
+    setEditSelectedFiles(files);
+  }
+
+  function handleDeleteAttachment(attachmentFileName) {
+    setAttachmentsToDelete((prev) => [...prev, attachmentFileName]);
   }
 
   async function handleSubmit(event) {
@@ -387,6 +448,124 @@ export default function TicketsPage({ view = "create" }) {
       setTickets(refreshedTickets);
     } catch (error) {
       setErrorMessage(error.message || "Failed to delete ticket");
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  function startEditingTicket(ticket) {
+    setErrorMessage("");
+    setSuccessMessage("");
+    setEditingTicketId(ticket.id);
+    setEditSelectedFiles([]);
+    setAttachmentsToDelete([]);
+    if (editFileInputRef.current) {
+      editFileInputRef.current.value = "";
+    }
+    setEditForm({
+      reporterName: ticket.reporterName || "",
+      reporterEmail: ticket.reporterEmail || "",
+      registerNumber: ticket.registerNumber || "",
+      faculty: ticket.faculty || "FACULTY_OF_COMPUTING",
+      contactNumber: ticket.contactNumber || "",
+      title: ticket.title || "",
+      category: ticket.category || "REGISTRATION",
+      priority: ticket.priority || "MEDIUM",
+      courseCode: ticket.courseCode || "",
+      year: ticket.year || "1",
+      semester: ticket.semester || "1",
+      description: ticket.description || "",
+    });
+  }
+
+  function cancelEditingTicket() {
+    setEditingTicketId(null);
+    setEditForm(DEFAULT_FORM);
+    setEditSelectedFiles([]);
+    setAttachmentsToDelete([]);
+    if (editFileInputRef.current) {
+      editFileInputRef.current.value = "";
+    }
+    setErrorMessage("");
+  }
+
+  async function handleUpdateTicket(ticketId) {
+    setErrorMessage("");
+    setSuccessMessage("");
+
+    if (!loggedUser || !editForm.reporterName.trim() || !editForm.reporterEmail.trim()) {
+      setErrorMessage("Please login first. Name and email are taken from your account.");
+      return;
+    }
+
+    if (!REGISTER_NUMBER_REGEX.test(editForm.registerNumber.trim().toUpperCase())) {
+      setErrorMessage("Register number must follow IT######## format. Example: IT23986587.");
+      return;
+    }
+
+    if (!CONTACT_NUMBER_REGEX.test(editForm.contactNumber.trim())) {
+      setErrorMessage("Contact number must contain exactly 10 digits.");
+      return;
+    }
+
+    if (!COURSE_CODE_REGEX.test(editForm.courseCode.trim().toUpperCase())) {
+      setErrorMessage("Course code must follow IT#### format. Example: IT3030.");
+      return;
+    }
+
+    const existingTicket = tickets.find((ticket) => ticket.id === ticketId);
+    if (!existingTicket) {
+      setErrorMessage("Ticket not found.");
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      const newAttachments = await Promise.all(
+        editSelectedFiles.map(async (file) => ({
+          fileName: file.name,
+          contentType: file.type || "application/octet-stream",
+          sizeInBytes: file.size,
+          dataBase64: await readFileAsBase64(file),
+          uploadedBy: "UPLOADED_BY_STUDENT",
+        }))
+      );
+
+      // Filter out attachments marked for deletion
+      const remainingAttachments = (existingTicket.attachments || []).filter(
+        (attachment) => !attachmentsToDelete.includes(attachment.fileName)
+      );
+
+      const updatedTicket = await updateTicket(ticketId, {
+        reporterName: editForm.reporterName,
+        reporterEmail: editForm.reporterEmail,
+        registerNumber: editForm.registerNumber.trim().toUpperCase(),
+        faculty: editForm.faculty,
+        contactNumber: editForm.contactNumber.trim(),
+        title: editForm.title.trim(),
+        category: editForm.category,
+        priority: editForm.priority,
+        courseCode: editForm.courseCode.trim().toUpperCase(),
+        year: editForm.year,
+        semester: editForm.semester,
+        description: editForm.description.trim(),
+        attachments: [...remainingAttachments, ...newAttachments],
+      });
+
+      setTickets((currentTickets) => currentTickets.map((ticket) => (
+        ticket.id === ticketId ? updatedTicket : ticket
+      )));
+      setEditingTicketId(null);
+      setEditForm(DEFAULT_FORM);
+      setEditSelectedFiles([]);
+      setAttachmentsToDelete([]);
+      if (editFileInputRef.current) {
+        editFileInputRef.current.value = "";
+      }
+      setSuccessMessage("Ticket updated successfully.");
+    } catch (error) {
+      setErrorMessage(error.message || "Failed to update ticket");
     } finally {
       setIsSubmitting(false);
     }
@@ -668,6 +847,8 @@ export default function TicketsPage({ view = "create" }) {
               <div className="ticket-list ticket-summary-list">
                 {tickets.map((ticket) => {
                   const isSelected = selectedTicketId === ticket.id;
+                  const isEditing = editingTicketId === ticket.id;
+                  const isPending = ticket.status === "PENDING";
                   const { studentAttachments, adminAttachments } = splitAttachmentsByOwner(ticket.attachments || []);
 
                   return (
@@ -700,53 +881,243 @@ export default function TicketsPage({ view = "create" }) {
                             </span>
                           </div>
 
-                          <p className="ticket-description">{ticket.description}</p>
+                          {isEditing ? (
+                            <div className="ticket-edit-form">
+                              <label htmlFor={`ticket-title-${ticket.id}`}>Ticket Title</label>
+                              <input
+                                id={`ticket-title-${ticket.id}`}
+                                type="text"
+                                value={editForm.title}
+                                onChange={(event) => handleEditFieldChange("title", event.target.value)}
+                                required
+                              />
 
-                          <div className="ticket-meta-grid">
-                            <span>
-                              <strong>Register No:</strong> {ticket.registerNumber || "-"}
-                            </span>
-                            <span>
-                              <strong>Faculty:</strong> {toLabel(ticket.faculty) || "-"}
-                            </span>
-                            <span>
-                              <strong>Contact:</strong> {ticket.contactNumber || "-"}
-                            </span>
-                            <span>
-                              <strong>Category:</strong> {toLabel(ticket.category)}
-                            </span>
-                            <span>
-                              <strong>Priority:</strong> {toLabel(ticket.priority)}
-                            </span>
-                            <span>
-                              <strong>Course Code:</strong> {ticket.courseCode || "-"}
-                            </span>
-                            <span>
-                              <strong>Year:</strong> {ticket.year || "-"}
-                            </span>
-                            <span>
-                              <strong>Semester:</strong> {ticket.semester || "-"}
-                            </span>
-                            <span>
-                              <strong>Created:</strong> {formatDateTime(ticket.createdAt)}
-                            </span>
-                          </div>
+                              <div className="ticket-form-row">
+                                <div>
+                                  <label htmlFor={`ticket-category-${ticket.id}`}>Category</label>
+                                  <select
+                                    id={`ticket-category-${ticket.id}`}
+                                    value={editForm.category}
+                                    onChange={(event) => handleEditFieldChange("category", event.target.value)}
+                                  >
+                                    {CATEGORY_OPTIONS.map((option) => (
+                                      <option key={option.value} value={option.value}>
+                                        {option.label}
+                                      </option>
+                                    ))}
+                                  </select>
+                                </div>
+
+                                <div>
+                                  <label htmlFor={`ticket-priority-${ticket.id}`}>Priority</label>
+                                  <select
+                                    id={`ticket-priority-${ticket.id}`}
+                                    value={editForm.priority}
+                                    onChange={(event) => handleEditFieldChange("priority", event.target.value)}
+                                  >
+                                    {PRIORITY_OPTIONS.map((option) => (
+                                      <option key={option.value} value={option.value}>
+                                        {option.label}
+                                      </option>
+                                    ))}
+                                  </select>
+                                </div>
+                              </div>
+
+                              <div className="ticket-form-row">
+                                <div>
+                                  <label htmlFor={`ticket-register-${ticket.id}`}>Register Number</label>
+                                  <input
+                                    id={`ticket-register-${ticket.id}`}
+                                    type="text"
+                                    value={editForm.registerNumber}
+                                    onChange={(event) => handleEditFieldChange("registerNumber", event.target.value.toUpperCase())}
+                                    pattern="^IT\\d{8}$"
+                                    required
+                                  />
+                                </div>
+
+                                <div>
+                                  <label htmlFor={`ticket-contact-${ticket.id}`}>Contact Number</label>
+                                  <input
+                                    id={`ticket-contact-${ticket.id}`}
+                                    type="tel"
+                                    value={editForm.contactNumber}
+                                    onChange={(event) => handleEditFieldChange("contactNumber", event.target.value.replace(/\D/g, ""))}
+                                    pattern="^\\d{10}$"
+                                    required
+                                  />
+                                </div>
+                              </div>
+
+                              <div className="ticket-form-row">
+                                <div>
+                                  <label htmlFor={`ticket-faculty-${ticket.id}`}>Faculty</label>
+                                  <select
+                                    id={`ticket-faculty-${ticket.id}`}
+                                    value={editForm.faculty}
+                                    onChange={(event) => handleEditFieldChange("faculty", event.target.value)}
+                                  >
+                                    {FACULTY_OPTIONS.map((option) => (
+                                      <option key={option.value} value={option.value}>
+                                        {option.label}
+                                      </option>
+                                    ))}
+                                  </select>
+                                </div>
+
+                                <div>
+                                  <label htmlFor={`ticket-course-${ticket.id}`}>Course Code</label>
+                                  <input
+                                    id={`ticket-course-${ticket.id}`}
+                                    type="text"
+                                    value={editForm.courseCode}
+                                    onChange={(event) => handleEditFieldChange("courseCode", event.target.value.toUpperCase())}
+                                    pattern="^IT\\d{4}$"
+                                    required
+                                  />
+                                </div>
+                              </div>
+
+                              <div className="ticket-form-row">
+                                <div>
+                                  <label htmlFor={`ticket-year-${ticket.id}`}>Year</label>
+                                  <select
+                                    id={`ticket-year-${ticket.id}`}
+                                    value={editForm.year}
+                                    onChange={(event) => handleEditFieldChange("year", event.target.value)}
+                                  >
+                                    {YEAR_OPTIONS.map((option) => (
+                                      <option key={option.value} value={option.value}>
+                                        {option.label}
+                                      </option>
+                                    ))}
+                                  </select>
+                                </div>
+
+                                <div>
+                                  <label htmlFor={`ticket-semester-${ticket.id}`}>Semester</label>
+                                  <select
+                                    id={`ticket-semester-${ticket.id}`}
+                                    value={editForm.semester}
+                                    onChange={(event) => handleEditFieldChange("semester", event.target.value)}
+                                  >
+                                    {SEMESTER_OPTIONS.map((option) => (
+                                      <option key={option.value} value={option.value}>
+                                        {option.label}
+                                      </option>
+                                    ))}
+                                  </select>
+                                </div>
+                              </div>
+
+                              <label htmlFor={`ticket-description-${ticket.id}`}>Description</label>
+                              <textarea
+                                id={`ticket-description-${ticket.id}`}
+                                value={editForm.description}
+                                onChange={(event) => handleEditFieldChange("description", event.target.value)}
+                                rows={5}
+                                required
+                              />
+
+                              <label htmlFor={`ticket-attachments-${ticket.id}`}>Upload New Attachments (Optional)</label>
+                              <input
+                                id={`ticket-attachments-${ticket.id}`}
+                                ref={editFileInputRef}
+                                type="file"
+                                multiple
+                                onChange={(event) => handleEditAttachmentsChange(event, studentAttachments.length)}
+                                accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.txt"
+                              />
+                              <p className="ticket-helper-text">
+                                You can keep current files and add new ones. Total limit: {MAX_ATTACHMENT_FILES} files, max 5 MB each.
+                              </p>
+                            </div>
+                          ) : (
+                            <>
+                              <p className="ticket-description">{ticket.description}</p>
+
+                              <div className="ticket-meta-grid">
+                                <span>
+                                  <strong>Register No:</strong> {ticket.registerNumber || "-"}
+                                </span>
+                                <span>
+                                  <strong>Faculty:</strong> {toLabel(ticket.faculty) || "-"}
+                                </span>
+                                <span>
+                                  <strong>Contact:</strong> {ticket.contactNumber || "-"}
+                                </span>
+                                <span>
+                                  <strong>Category:</strong> {toLabel(ticket.category)}
+                                </span>
+                                <span>
+                                  <strong>Priority:</strong> {toLabel(ticket.priority)}
+                                </span>
+                                <span>
+                                  <strong>Course Code:</strong> {ticket.courseCode || "-"}
+                                </span>
+                                <span>
+                                  <strong>Year:</strong> {ticket.year || "-"}
+                                </span>
+                                <span>
+                                  <strong>Semester:</strong> {ticket.semester || "-"}
+                                </span>
+                                <span>
+                                  <strong>Created:</strong> {formatDateTime(ticket.createdAt)}
+                                </span>
+                              </div>
+                            </>
+                          )}
 
                           {studentAttachments.length > 0 && (
                             <div className="ticket-attachments">
                               <strong>Your Attachments:</strong>
                               <ul>
-                                {studentAttachments.map((attachment, index) => (
-                                  <li key={`${ticket.id}-${attachment.fileName}-${index}`}>
-                                    <a
-                                      href={buildAttachmentDataUrl(attachment)}
-                                      download={attachment.fileName}
-                                      target="_blank"
-                                      rel="noreferrer"
+                                {studentAttachments.map((attachment, index) => {
+                                  const isMarkedForDeletion = attachmentsToDelete.includes(attachment.fileName);
+                                  return (
+                                    <li 
+                                      key={`${ticket.id}-${attachment.fileName}-${index}`}
+                                      className={isMarkedForDeletion ? "attachment-deleted" : ""}
                                     >
-                                      {attachment.fileName}
-                                    </a>
-                                    <span>{formatBytes(attachment.sizeInBytes)}</span>
+                                      <a
+                                        href={buildAttachmentDataUrl(attachment)}
+                                        download={attachment.fileName}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                        style={isMarkedForDeletion ? { textDecoration: "line-through", opacity: 0.5 } : {}}
+                                      >
+                                        {attachment.fileName}
+                                      </a>
+                                      <span style={isMarkedForDeletion ? { textDecoration: "line-through", opacity: 0.5 } : {}}>
+                                        {formatBytes(attachment.sizeInBytes)}
+                                      </span>
+                                      {isEditing && (
+                                        <button
+                                          type="button"
+                                          className="attachment-delete-btn"
+                                          onClick={() => handleDeleteAttachment(attachment.fileName)}
+                                          disabled={isMarkedForDeletion}
+                                          title={isMarkedForDeletion ? "Marked for deletion" : "Delete attachment"}
+                                        >
+                                          {isMarkedForDeletion ? "✓" : "×"}
+                                        </button>
+                                      )}
+                                    </li>
+                                  );
+                                })}
+                              </ul>
+                            </div>
+                          )}
+
+                          {isEditing && editSelectedFiles.length > 0 && (
+                            <div className="ticket-attachments">
+                              <strong>New Attachments to Upload:</strong>
+                              <ul>
+                                {editSelectedFiles.map((file) => (
+                                  <li key={`${ticket.id}-new-${file.name}-${file.size}`}>
+                                    <span>{file.name}</span>
+                                    <span>{formatBytes(file.size)}</span>
                                   </li>
                                 ))}
                               </ul>
@@ -792,6 +1163,40 @@ export default function TicketsPage({ view = "create" }) {
                                 onClick={() => handleDeleteTicket(ticket.id)}
                               >
                                 Delete Ticket
+                              </button>
+                            </div>
+                          )}
+
+                          {isPending && !isEditing && (
+                            <div className="ticket-student-actions">
+                              <button
+                                type="button"
+                                className="ticket-refresh-btn"
+                                disabled={isSubmitting}
+                                onClick={() => startEditingTicket(ticket)}
+                              >
+                                Edit Ticket
+                              </button>
+                            </div>
+                          )}
+
+                          {isEditing && (
+                            <div className="ticket-student-actions">
+                              <button
+                                type="button"
+                                className="ticket-refresh-btn"
+                                disabled={isSubmitting}
+                                onClick={() => handleUpdateTicket(ticket.id)}
+                              >
+                                {isSubmitting ? "Updating..." : "Update Ticket"}
+                              </button>
+                              <button
+                                type="button"
+                                className="ticket-secondary-btn"
+                                disabled={isSubmitting}
+                                onClick={cancelEditingTicket}
+                              >
+                                Cancel
                               </button>
                             </div>
                           )}
