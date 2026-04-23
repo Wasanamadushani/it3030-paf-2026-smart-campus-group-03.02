@@ -172,6 +172,7 @@ export default function TicketsPage({ view = "create" }) {
   const [editingTicketId, setEditingTicketId] = useState(null);
   const [editForm, setEditForm] = useState(DEFAULT_FORM);
   const [editSelectedFiles, setEditSelectedFiles] = useState([]);
+  const [attachmentsToDelete, setAttachmentsToDelete] = useState([]);
   const fileInputRef = useRef(null);
   const editFileInputRef = useRef(null);
   const isListView = view === "list";
@@ -343,6 +344,10 @@ export default function TicketsPage({ view = "create" }) {
     setEditSelectedFiles(files);
   }
 
+  function handleDeleteAttachment(attachmentFileName) {
+    setAttachmentsToDelete((prev) => [...prev, attachmentFileName]);
+  }
+
   async function handleSubmit(event) {
     event.preventDefault();
     setErrorMessage("");
@@ -453,6 +458,7 @@ export default function TicketsPage({ view = "create" }) {
     setSuccessMessage("");
     setEditingTicketId(ticket.id);
     setEditSelectedFiles([]);
+    setAttachmentsToDelete([]);
     if (editFileInputRef.current) {
       editFileInputRef.current.value = "";
     }
@@ -476,6 +482,7 @@ export default function TicketsPage({ view = "create" }) {
     setEditingTicketId(null);
     setEditForm(DEFAULT_FORM);
     setEditSelectedFiles([]);
+    setAttachmentsToDelete([]);
     if (editFileInputRef.current) {
       editFileInputRef.current.value = "";
     }
@@ -525,6 +532,11 @@ export default function TicketsPage({ view = "create" }) {
         }))
       );
 
+      // Filter out attachments marked for deletion
+      const remainingAttachments = (existingTicket.attachments || []).filter(
+        (attachment) => !attachmentsToDelete.includes(attachment.fileName)
+      );
+
       const updatedTicket = await updateTicket(ticketId, {
         reporterName: editForm.reporterName,
         reporterEmail: editForm.reporterEmail,
@@ -538,7 +550,7 @@ export default function TicketsPage({ view = "create" }) {
         year: editForm.year,
         semester: editForm.semester,
         description: editForm.description.trim(),
-        attachments: [...(existingTicket.attachments || []), ...newAttachments],
+        attachments: [...remainingAttachments, ...newAttachments],
       });
 
       setTickets((currentTickets) => currentTickets.map((ticket) => (
@@ -547,6 +559,7 @@ export default function TicketsPage({ view = "create" }) {
       setEditingTicketId(null);
       setEditForm(DEFAULT_FORM);
       setEditSelectedFiles([]);
+      setAttachmentsToDelete([]);
       if (editFileInputRef.current) {
         editFileInputRef.current.value = "";
       }
@@ -1060,19 +1073,39 @@ export default function TicketsPage({ view = "create" }) {
                             <div className="ticket-attachments">
                               <strong>Your Attachments:</strong>
                               <ul>
-                                {studentAttachments.map((attachment, index) => (
-                                  <li key={`${ticket.id}-${attachment.fileName}-${index}`}>
-                                    <a
-                                      href={buildAttachmentDataUrl(attachment)}
-                                      download={attachment.fileName}
-                                      target="_blank"
-                                      rel="noreferrer"
+                                {studentAttachments.map((attachment, index) => {
+                                  const isMarkedForDeletion = attachmentsToDelete.includes(attachment.fileName);
+                                  return (
+                                    <li 
+                                      key={`${ticket.id}-${attachment.fileName}-${index}`}
+                                      className={isMarkedForDeletion ? "attachment-deleted" : ""}
                                     >
-                                      {attachment.fileName}
-                                    </a>
-                                    <span>{formatBytes(attachment.sizeInBytes)}</span>
-                                  </li>
-                                ))}
+                                      <a
+                                        href={buildAttachmentDataUrl(attachment)}
+                                        download={attachment.fileName}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                        style={isMarkedForDeletion ? { textDecoration: "line-through", opacity: 0.5 } : {}}
+                                      >
+                                        {attachment.fileName}
+                                      </a>
+                                      <span style={isMarkedForDeletion ? { textDecoration: "line-through", opacity: 0.5 } : {}}>
+                                        {formatBytes(attachment.sizeInBytes)}
+                                      </span>
+                                      {isEditing && (
+                                        <button
+                                          type="button"
+                                          className="attachment-delete-btn"
+                                          onClick={() => handleDeleteAttachment(attachment.fileName)}
+                                          disabled={isMarkedForDeletion}
+                                          title={isMarkedForDeletion ? "Marked for deletion" : "Delete attachment"}
+                                        >
+                                          {isMarkedForDeletion ? "✓" : "×"}
+                                        </button>
+                                      )}
+                                    </li>
+                                  );
+                                })}
                               </ul>
                             </div>
                           )}
