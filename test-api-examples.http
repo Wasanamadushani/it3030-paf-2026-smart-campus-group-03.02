@@ -1,0 +1,285 @@
+### Smart Campus Hub - API Test Examples
+### Use with REST Client extension in VS Code or import to Postman
+
+@baseUrl = http://localhost:5000
+@sessionCookie = your_session_cookie_here
+
+### ============================================
+### AUTHENTICATION
+### ============================================
+
+### Login with Email/Password
+POST {{baseUrl}}/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "admin@smartcampus.com",
+  "password": "Admin@123456"
+}
+
+### Register New User
+POST {{baseUrl}}/api/auth/register
+Content-Type: application/json
+
+{
+  "name": "John Doe",
+  "email": "john@example.com",
+  "password": "SecurePass123",
+  "confirmPassword": "SecurePass123"
+}
+
+### Check Authentication Status
+GET {{baseUrl}}/api/auth/status
+
+### Logout
+POST {{baseUrl}}/api/auth/logout
+
+### Google Login (Open in browser)
+GET {{baseUrl}}/auth/google
+
+### Logout (Old endpoint)
+GET {{baseUrl}}/logout
+
+### ============================================
+### ROLE MANAGEMENT
+### ============================================
+
+### Get Current User Profile
+GET {{baseUrl}}/api/roles/me
+Cookie: connect.sid={{sessionCookie}}
+
+### Get All Users (Admin/Manager only)
+GET {{baseUrl}}/api/roles/users?page=1&limit=20
+Cookie: connect.sid={{sessionCookie}}
+
+### Search Users
+GET {{baseUrl}}/api/roles/users?search=admin&role=ADMIN
+Cookie: connect.sid={{sessionCookie}}
+
+### Get User by ID
+GET {{baseUrl}}/api/roles/users/USER_ID_HERE
+Cookie: connect.sid={{sessionCookie}}
+
+### Update User Role (Admin only)
+PUT {{baseUrl}}/api/roles/users/USER_ID_HERE/role
+Cookie: connect.sid={{sessionCookie}}
+Content-Type: application/json
+
+{
+  "role": "STAFF"
+}
+
+### Update User Permissions (Admin only)
+PUT {{baseUrl}}/api/roles/users/USER_ID_HERE/permissions
+Cookie: connect.sid={{sessionCookie}}
+Content-Type: application/json
+
+{
+  "permissions": ["READ_USERS", "WRITE_NOTIFICATIONS"]
+}
+
+### Toggle User Active Status (Admin only)
+PATCH {{baseUrl}}/api/roles/users/USER_ID_HERE/toggle-status
+Cookie: connect.sid={{sessionCookie}}
+
+### Get Role Statistics (Admin only)
+GET {{baseUrl}}/api/roles/statistics
+Cookie: connect.sid={{sessionCookie}}
+
+### ============================================
+### NOTIFICATIONS
+### ============================================
+
+### Get User Notifications
+GET {{baseUrl}}/api/notifications?page=1&limit=20
+Cookie: connect.sid={{sessionCookie}}
+
+### Get Unread Notifications Only
+GET {{baseUrl}}/api/notifications?isRead=false
+Cookie: connect.sid={{sessionCookie}}
+
+### Filter by Type and Priority
+GET {{baseUrl}}/api/notifications?type=WARNING&priority=HIGH
+Cookie: connect.sid={{sessionCookie}}
+
+### Get Unread Count
+GET {{baseUrl}}/api/notifications/unread-count
+Cookie: connect.sid={{sessionCookie}}
+
+### Mark Notification as Read
+PATCH {{baseUrl}}/api/notifications/NOTIFICATION_ID_HERE/read
+Cookie: connect.sid={{sessionCookie}}
+
+### Mark All Notifications as Read
+PATCH {{baseUrl}}/api/notifications/read-all
+Cookie: connect.sid={{sessionCookie}}
+
+### Delete Notification
+DELETE {{baseUrl}}/api/notifications/NOTIFICATION_ID_HERE
+Cookie: connect.sid={{sessionCookie}}
+
+### Delete All Read Notifications
+DELETE {{baseUrl}}/api/notifications/read/all
+Cookie: connect.sid={{sessionCookie}}
+
+### Create Notification for Single User (Admin/Staff/Manager)
+POST {{baseUrl}}/api/notifications
+Cookie: connect.sid={{sessionCookie}}
+Content-Type: application/json
+
+{
+  "userId": "USER_ID_HERE",
+  "title": "Welcome to Smart Campus Hub",
+  "message": "Your account has been successfully created. Start exploring!",
+  "type": "SUCCESS",
+  "priority": "MEDIUM",
+  "category": "ACCOUNT"
+}
+
+### Create Notification for Multiple Users
+POST {{baseUrl}}/api/notifications
+Cookie: connect.sid={{sessionCookie}}
+Content-Type: application/json
+
+{
+  "userIds": ["USER_ID_1", "USER_ID_2"],
+  "title": "Team Update",
+  "message": "New project has been assigned to your team.",
+  "type": "INFO",
+  "priority": "MEDIUM",
+  "category": "GENERAL"
+}
+
+### Send System Announcement to All Users
+POST {{baseUrl}}/api/notifications
+Cookie: connect.sid={{sessionCookie}}
+Content-Type: application/json
+
+{
+  "sendToAll": true,
+  "title": "System Maintenance Notice",
+  "message": "The system will be down for maintenance on Sunday from 2 AM to 4 AM.",
+  "type": "SYSTEM",
+  "priority": "HIGH",
+  "category": "ANNOUNCEMENT"
+}
+
+### Create Urgent Security Alert
+POST {{baseUrl}}/api/notifications
+Cookie: connect.sid={{sessionCookie}}
+Content-Type: application/json
+
+{
+  "userId": "USER_ID_HERE",
+  "title": "Security Alert",
+  "message": "Unusual login activity detected from a new location. Please verify your account.",
+  "type": "WARNING",
+  "priority": "URGENT",
+  "category": "SECURITY",
+  "link": "/security/settings"
+}
+
+### Create Notification with Expiration
+POST {{baseUrl}}/api/notifications
+Cookie: connect.sid={{sessionCookie}}
+Content-Type: application/json
+
+{
+  "userId": "USER_ID_HERE",
+  "title": "Limited Time Offer",
+  "message": "Special discount available until end of month!",
+  "type": "INFO",
+  "priority": "LOW",
+  "category": "GENERAL",
+  "expiresAt": "2024-12-31T23:59:59.000Z"
+}
+
+### Create Notification with Metadata
+POST {{baseUrl}}/api/notifications
+Cookie: connect.sid={{sessionCookie}}
+Content-Type: application/json
+
+{
+  "userId": "USER_ID_HERE",
+  "title": "New Message",
+  "message": "You have received a new message from John Doe",
+  "type": "INFO",
+  "priority": "MEDIUM",
+  "category": "GENERAL",
+  "link": "/messages/123",
+  "metadata": {
+    "messageId": "123",
+    "senderId": "456",
+    "senderName": "John Doe"
+  }
+}
+
+### ============================================
+### NOTIFICATION TYPES EXAMPLES
+### ============================================
+
+### INFO Notification
+POST {{baseUrl}}/api/notifications
+Cookie: connect.sid={{sessionCookie}}
+Content-Type: application/json
+
+{
+  "userId": "USER_ID_HERE",
+  "title": "Information",
+  "message": "Your profile has been viewed 10 times this week.",
+  "type": "INFO",
+  "priority": "LOW"
+}
+
+### SUCCESS Notification
+POST {{baseUrl}}/api/notifications
+Cookie: connect.sid={{sessionCookie}}
+Content-Type: application/json
+
+{
+  "userId": "USER_ID_HERE",
+  "title": "Success!",
+  "message": "Your payment has been processed successfully.",
+  "type": "SUCCESS",
+  "priority": "MEDIUM"
+}
+
+### WARNING Notification
+POST {{baseUrl}}/api/notifications
+Cookie: connect.sid={{sessionCookie}}
+Content-Type: application/json
+
+{
+  "userId": "USER_ID_HERE",
+  "title": "Warning",
+  "message": "Your subscription will expire in 3 days.",
+  "type": "WARNING",
+  "priority": "HIGH"
+}
+
+### ERROR Notification
+POST {{baseUrl}}/api/notifications
+Cookie: connect.sid={{sessionCookie}}
+Content-Type: application/json
+
+{
+  "userId": "USER_ID_HERE",
+  "title": "Error",
+  "message": "Failed to process your request. Please try again.",
+  "type": "ERROR",
+  "priority": "HIGH"
+}
+
+### SYSTEM Notification
+POST {{baseUrl}}/api/notifications
+Cookie: connect.sid={{sessionCookie}}
+Content-Type: application/json
+
+{
+  "sendToAll": true,
+  "title": "System Update",
+  "message": "New features have been added to the platform.",
+  "type": "SYSTEM",
+  "priority": "MEDIUM",
+  "category": "ANNOUNCEMENT"
+}

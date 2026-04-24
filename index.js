@@ -12,6 +12,9 @@ const User = require("./models/User");
 const PasswordResetOtp = require("./models/PasswordResetOtp");
 const { sendOtpEmail } = require("./services/emailService");
 
+const notificationRoutes = require("./routes/notificationRoutes");
+const roleRoutes = require("./routes/roleRoutes");
+
 require("./config/passport");
 
 const app = express();
@@ -69,6 +72,182 @@ app.use(session({
 app.use(passport.initialize());
 app.use(passport.session());
 
+// ROUTES
+app.use("/api/notifications", notificationRoutes);
+app.use("/api/roles", roleRoutes);
+
+// EMAIL/PASSWORD LOGIN
+app.post("/api/auth/login", async (req, res) => {
+  try {
+    const email = normalizeEmail(req.body?.email);
+    const password = String(req.body?.password || "");
+
+    if (!isValidEmail(email)) {
+      return res.status(400).json({ message: "Please provide a valid email address." });
+    }
+
+    if (!password) {
+      return res.status(400).json({ message: "Password is required." });
+    }
+
+    // Find user by email
+    const user = await User.findOne({ email });
+
+    if (!user) {
+      return res.status(401).json({ message: "Invalid email or password." });
+    }
+
+    // Check if user has a password (not just Google OAuth)
+    if (!user.passwordHash) {
+      return res.status(401).json({ 
+        message: "This account uses Google login. Please login with Google." 
+      });
+    }
+
+    // Check if user is active
+    if (!user.isActive) {
+      return res.status(403).json({ message: "Account is inactive. Please contact support." });
+    }
+
+    // Verify password
+    const isPasswordValid = await bcrypt.compare(password, user.passwordHash);
+
+    if (!isPasswordValid) {
+      return res.status(401).json({ message: "Invalid email or password." });
+    }
+
+    // Update last login
+    user.lastLogin = new Date();
+    await user.save();
+
+    // Create session
+    req.login(user, (err) => {
+      if (err) {
+        console.error("Login session error:", err);
+        return res.status(500).json({ message: "Failed to create session." });
+      }
+
+      return res.status(200).json({
+        message: "Login successful",
+        user: {
+          _id: user._id,
+          name: user.name,
+          email: user.email,
+          role: user.role,
+          permissions: user.permissions,
+          profilePic: user.profilePic,
+          isActive: user.isActive,
+        },
+      });
+    });
+  } catch (error) {
+    console.error("Login error:", error);
+    return res.status(500).json({ message: "Unable to login right now." });
+  }
+});
+
+// REGISTER NEW USER
+app.post("/api/auth/register", async (req, res) => {
+  try {
+    const { name, email, password, confirmPassword } = req.body;
+    const normalizedEmail = normalizeEmail(email);
+
+    if (!name || !email || !password) {
+      return res.status(400).json({ message: "Name, email, and password are required." });
+    }
+
+    if (!isValidEmail(normalizedEmail)) {
+      return res.status(400).json({ message: "Please provide a valid email address." });
+    }
+
+    if (password.length < passwordMinLength) {
+      return res.status(400).json({
+        message: `Password must be at least ${passwordMinLength} characters long.`,
+      });
+    }
+
+    if (password !== confirmPassword) {
+      return res.status(400).json({ message: "Passwords do not match." });
+    }
+
+    // Check if user already exists
+    const existingUser = await User.findOne({ email: normalizedEmail });
+
+    if (existingUser) {
+      return res.status(409).json({ message: "User with this email already exists." });
+    }
+
+    // Hash password
+    const passwordHash = await bcrypt.hash(password, 12);
+
+    // Create new user
+    const user = await User.create({
+      name,
+      email: normalizedEmail,
+      passwordHash,
+      role: "CUSTOMER",
+      permissions: ["READ_NOTIFICATIONS"],
+      isActive: true,
+    });
+
+    // Create session
+    req.login(user, (err) => {
+      if (err) {
+        console.error("Registration session error:", err);
+        return res.status(500).json({ message: "User created but failed to create session." });
+      }
+
+      return res.status(201).json({
+        message: "Registration successful",
+        user: {
+          _id: user._id,
+          name: user.name,
+          email: user.email,
+          role: user.role,
+          permissions: user.permissions,
+          isActive: user.isActive,
+        },
+      });
+    });
+  } catch (error) {
+    console.error("Registration error:", error);
+    return res.status(500).json({ message: "Unable to register right now." });
+  }
+});
+
+// CHECK AUTH STATUS
+app.get("/api/auth/status", (req, res) => {
+  if (req.isAuthenticated && req.isAuthenticated()) {
+    return res.status(200).json({
+      authenticated: true,
+      user: {
+        _id: req.user._id,
+        name: req.user.name,
+        email: req.user.email,
+        role: req.user.role,
+        permissions: req.user.permissions,
+        profilePic: req.user.profilePic,
+        isActive: req.user.isActive,
+      },
+    });
+  }
+
+  return res.status(200).json({
+    authenticated: false,
+    user: null,
+  });
+});
+
+// LOGOUT API
+app.post("/api/auth/logout", (req, res) => {
+  req.logout((err) => {
+    if (err) {
+      return res.status(500).json({ message: "Failed to logout." });
+    }
+    return res.status(200).json({ message: "Logout successful" });
+  });
+});
+
 // HOME
 app.get("/", (req, res) => {
   res.send("<a href='/auth/google'>Login with Google</a>");
@@ -87,15 +266,24 @@ app.get(
 app.get(
   "/auth/google/callback",
   passport.authenticate("google", { failureRedirect: "/" }),
-  (req, res) => {
-    const params = new URLSearchParams({
-      auth: "success",
-      fullName: req.user?.name || "Customer",
-      email: req.user?.email || "",
-      profilePic: req.user?.profilePic || "",
-      role: "CUSTOMER",
-    });
-    res.redirect(`${frontendUrl}/?${params.toString()}`);
+  async (req, res) => {
+    try {
+      // Update last login
+      await User.findByIdAndUpdate(req.user._id, { lastLogin: new Date() });
+
+      const params = new URLSearchParams({
+        auth: "success",
+        fullName: req.user?.name || "Customer",
+        email: req.user?.email || "",
+        profilePic: req.user?.profilePic || "",
+        role: req.user?.role || "CUSTOMER",
+        userId: req.user?._id || "",
+      });
+      res.redirect(`${frontendUrl}/?${params.toString()}`);
+    } catch (error) {
+      console.error("Callback error:", error);
+      res.redirect(`${frontendUrl}/?auth=error`);
+    }
   }
 );
 

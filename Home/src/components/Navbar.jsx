@@ -11,6 +11,9 @@ const menuItems = [
 export default function Navbar({ userName = "Alex Silva", role = "USER" }) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+  const [notifications, setNotifications] = useState([]);
+  const [unreadCount, setUnreadCount] = useState(0);
   const [isLoginOpen, setIsLoginOpen] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -185,7 +188,49 @@ export default function Navbar({ userName = "Alex Silva", role = "USER" }) {
     setSuccessMessage("");
 
     try {
-      const response = await fetch(`${apiBaseUrl}/api/auth/login`, {
+      // Try Node.js backend first (for admin/email login)
+      const nodeResponse = await fetch('http://localhost:5000/api/auth/login', {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: 'include',
+        body: JSON.stringify({ email, password }),
+      });
+
+      if (nodeResponse.ok) {
+        const nodeData = await nodeResponse.json();
+        
+        // Store user data
+        const userData = {
+          fullName: nodeData.user.name,
+          email: nodeData.user.email,
+          role: nodeData.user.role,
+          profilePic: nodeData.user.profilePic || "",
+          userId: nodeData.user._id,
+          permissions: nodeData.user.permissions
+        };
+        
+        setCurrentUser(userData);
+        localStorage.setItem('user', JSON.stringify(userData));
+        setIsLoginOpen(false);
+        setEmail("");
+        setPassword("");
+        setIsProfileOpen(false);
+        setSuccessMessage("Login successful!");
+        
+        // Redirect based on role
+        if (nodeData.user.role === 'ADMIN' || nodeData.user.role === 'MANAGER') {
+          // Redirect to admin dashboard
+          window.location.href = '/admin/dashboard';
+        } else {
+          goToCustomerDashboard();
+        }
+        return;
+      }
+
+      // If Node.js backend fails, try Spring Boot backend
+      const springResponse = await fetch(`${apiBaseUrl}/api/auth/login`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -193,21 +238,23 @@ export default function Navbar({ userName = "Alex Silva", role = "USER" }) {
         body: JSON.stringify({ email, password }),
       });
 
-      const data = await response.json();
+      const springData = await springResponse.json();
 
-      if (!response.ok) {
-        setErrorMessage(data.message || "Login failed");
+      if (!springResponse.ok) {
+        setErrorMessage(springData.message || "Invalid email or password");
         return;
       }
 
-      setCurrentUser(data);
+      setCurrentUser(springData);
+      localStorage.setItem('user', JSON.stringify(springData));
       setIsLoginOpen(false);
       setEmail("");
       setPassword("");
       setIsProfileOpen(false);
       goToCustomerDashboard();
     } catch (error) {
-      setErrorMessage("Unable to reach backend server");
+      console.error('Login error:', error);
+      setErrorMessage("Unable to reach server. Please try again.");
     } finally {
       setIsSubmitting(false);
     }
@@ -434,6 +481,61 @@ export default function Navbar({ userName = "Alex Silva", role = "USER" }) {
     }, 0);
   }, []);
 
+  useEffect(() => {
+    if (currentUser) {
+      fetchNotifications();
+      // Refresh notifications every 30 seconds
+      const interval = setInterval(fetchNotifications, 30000);
+      return () => clearInterval(interval);
+    }
+  }, [currentUser]);
+
+  async function fetchNotifications() {
+    try {
+      const response = await fetch('http://localhost:5000/api/notifications?limit=10', {
+        credentials: 'include'
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        setNotifications(data.notifications || []);
+        setUnreadCount(data.unreadCount || 0);
+      }
+    } catch (error) {
+      console.error('Fetch notifications error:', error);
+    }
+  }
+
+  async function markAsRead(id) {
+    try {
+      const response = await fetch(`http://localhost:5000/api/notifications/${id}/read`, {
+        method: 'PATCH',
+        credentials: 'include'
+      });
+
+      if (response.ok) {
+        fetchNotifications();
+      }
+    } catch (error) {
+      console.error('Mark as read error:', error);
+    }
+  }
+
+  async function markAllAsRead() {
+    try {
+      const response = await fetch('http://localhost:5000/api/notifications/read-all', {
+        method: 'PATCH',
+        credentials: 'include'
+      });
+
+      if (response.ok) {
+        fetchNotifications();
+      }
+    } catch (error) {
+      console.error('Mark all as read error:', error);
+    }
+  }
+
   return (
     <header className="top-nav">
       <div className="brand-wrap">
@@ -455,14 +557,86 @@ export default function Navbar({ userName = "Alex Silva", role = "USER" }) {
       </button>
 
       <nav className={`nav-links ${isMenuOpen ? "open" : ""}`}>
-        {menuItems.map((item) => (
-          <a key={item} href="#" className="nav-link">
+        {menuItems.filter(item => item !== "Notifications").map((item) => (
+          <a 
+            key={item} 
+            href="#" 
+            className="nav-link"
+          >
             {item}
           </a>
         ))}
       </nav>
 
       <div className="profile-wrap">
+        {currentUser && (
+          <div className="notification-bell-wrap">
+            <button
+              className="notification-bell"
+              onClick={() => {
+                setIsNotificationsOpen((prev) => !prev);
+                setIsProfileOpen(false);
+              }}
+              aria-label="Notifications"
+            >
+              <span className="bell-icon">🔔</span>
+              {unreadCount > 0 && (
+                <span className="notification-badge">{unreadCount}</span>
+              )}
+            </button>
+
+            {isNotificationsOpen && (
+              <div className="notifications-dropdown" role="menu">
+                <div className="notifications-header">
+                  <h3>Notifications</h3>
+                  {unreadCount > 0 && (
+                    <button 
+                      className="mark-all-read"
+                      onClick={markAllAsRead}
+                    >
+                      Mark all as read
+                    </button>
+                  )}
+                </div>
+
+                <div className="notifications-list">
+                  {notifications.length > 0 ? (
+                    notifications.map((notif) => (
+                      <div
+                        key={notif._id}
+                        className={`notification-item ${notif.isRead ? 'read' : 'unread'}`}
+                        onClick={() => !notif.isRead && markAsRead(notif._id)}
+                      >
+                        <div className="notification-content">
+                          <div className="notification-meta">
+                            <span className={`notification-type ${notif.type.toLowerCase()}`}>
+                              {notif.type}
+                            </span>
+                            <span className="notification-time">
+                              {new Date(notif.createdAt).toLocaleDateString()}
+                            </span>
+                          </div>
+                          <h4>{notif.title}</h4>
+                          <p>{notif.message}</p>
+                        </div>
+                        {!notif.isRead && <span className="unread-dot"></span>}
+                      </div>
+                    ))
+                  ) : (
+                    <div className="no-notifications">
+                      <p>No notifications</p>
+                    </div>
+                  )}
+                </div>
+
+                <div className="notifications-footer">
+                  <a href="/notifications">View all notifications</a>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
         {currentUser ? (
           <>
             <button
@@ -480,6 +654,9 @@ export default function Navbar({ userName = "Alex Silva", role = "USER" }) {
 
             {isProfileOpen && (
               <div className="profile-dropdown" role="menu">
+                {(displayRole === 'ADMIN' || displayRole === 'MANAGER') && (
+                  <a href="/admin/dashboard">Admin Dashboard</a>
+                )}
                 <a
                   href="#customer-dashboard"
                   onClick={(event) => {
@@ -528,6 +705,20 @@ export default function Navbar({ userName = "Alex Silva", role = "USER" }) {
                 x
               </button>
             </div>
+
+            {authMode === "login" && (
+              <div style={{ 
+                textAlign: 'center', 
+                padding: '8px 16px', 
+                background: '#f0f4ff', 
+                borderRadius: '6px',
+                marginBottom: '16px',
+                fontSize: '13px',
+                color: '#555'
+              }}>
+                <strong>Admin Login:</strong> admin@smartcampus.com / Admin@123456
+              </div>
+            )}
 
             <div className="auth-tabs">
               <button
