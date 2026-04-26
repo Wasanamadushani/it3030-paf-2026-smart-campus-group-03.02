@@ -41,11 +41,31 @@ const STATUS_FILTER_OPTIONS = [
   { value: "CLOSED", label: "Closed" },
 ];
 
+// ============================================
+// VALIDATION CONSTANTS
+// ============================================
+
+// Maximum number of attachments allowed per ticket
 const MAX_ATTACHMENT_FILES = 5;
+
+// Maximum file size per attachment (5 MB)
 const MAX_ATTACHMENT_BYTES = 5 * 1024 * 1024;
+
+// Validation regex: Register number must be "IT" followed by exactly 8 digits
+// Example: IT12345678
 const REGISTER_NUMBER_REGEX = /^IT\d{8}$/;
+
+// Validation regex: Contact number must be exactly 10 digits
+// Example: 0771234567
 const CONTACT_NUMBER_REGEX = /^\d{10}$/;
+
+// Validation regex: Course code must be "IT" followed by exactly 4 digits
+// Example: IT3030
 const COURSE_CODE_REGEX = /^IT\d{4}$/;
+
+// ============================================
+// DEFAULT FORM STATE
+// ============================================
 
 const DEFAULT_FORM = {
   reporterName: "",
@@ -292,10 +312,18 @@ export default function TicketsPage({ view = "create" }) {
     setEditForm((prev) => ({ ...prev, [field]: value }));
   }
 
+  /**
+   * Handles file selection for new ticket creation.
+   * Validates file count and size limits.
+   */
   function handleAttachmentsChange(event) {
     const files = Array.from(event.target.files || []);
     setErrorMessage("");
 
+    // ============================================
+    // VALIDATION: Maximum File Count
+    // ============================================
+    // Check if user selected more than 5 files
     if (files.length > MAX_ATTACHMENT_FILES) {
       setSelectedFiles([]);
       setErrorMessage(`You can attach up to ${MAX_ATTACHMENT_FILES} files.`);
@@ -305,6 +333,10 @@ export default function TicketsPage({ view = "create" }) {
       return;
     }
 
+    // ============================================
+    // VALIDATION: File Size Limit
+    // ============================================
+    // Check if any file exceeds 5 MB limit
     const invalidFile = files.find((file) => file.size > MAX_ATTACHMENT_BYTES);
     if (invalidFile) {
       setSelectedFiles([]);
@@ -318,10 +350,18 @@ export default function TicketsPage({ view = "create" }) {
     setSelectedFiles(files);
   }
 
+  /**
+   * Handles file selection for ticket editing.
+   * Validates file count (including existing attachments) and size limits.
+   */
   function handleEditAttachmentsChange(event, existingAttachmentCount = 0) {
     const files = Array.from(event.target.files || []);
     setErrorMessage("");
 
+    // ============================================
+    // VALIDATION: Maximum File Count (Including Existing)
+    // ============================================
+    // Check if total files (new + existing) exceed 5 files limit
     if (files.length + existingAttachmentCount > MAX_ATTACHMENT_FILES) {
       setEditSelectedFiles([]);
       setErrorMessage(`You can attach up to ${MAX_ATTACHMENT_FILES} files.`);
@@ -331,6 +371,10 @@ export default function TicketsPage({ view = "create" }) {
       return;
     }
 
+    // ============================================
+    // VALIDATION: File Size Limit
+    // ============================================
+    // Check if any file exceeds 5 MB limit
     const invalidFile = files.find((file) => file.size > MAX_ATTACHMENT_BYTES);
     if (invalidFile) {
       setEditSelectedFiles([]);
@@ -344,30 +388,54 @@ export default function TicketsPage({ view = "create" }) {
     setEditSelectedFiles(files);
   }
 
+  /**
+   * Marks an attachment for deletion.
+   * The actual deletion happens when the ticket is updated.
+   */
   function handleDeleteAttachment(attachmentFileName) {
     setAttachmentsToDelete((prev) => [...prev, attachmentFileName]);
   }
 
+  /**
+   * Handles ticket creation form submission.
+   * Validates all required fields before sending to backend.
+   */
   async function handleSubmit(event) {
     event.preventDefault();
     setErrorMessage("");
     setSuccessMessage("");
 
+    // ============================================
+    // VALIDATION: User Authentication
+    // ============================================
+    // Ensure user is logged in and has name/email from their account
     if (!loggedUser || !form.reporterName.trim() || !form.reporterEmail.trim()) {
       setErrorMessage("Please login first. Name and email are taken from your account.");
       return;
     }
 
+    // ============================================
+    // VALIDATION: Register Number Format
+    // ============================================
+    // Must be "IT" followed by exactly 8 digits (e.g., IT12345678)
     if (!REGISTER_NUMBER_REGEX.test(form.registerNumber.trim().toUpperCase())) {
       setErrorMessage("Register number must follow IT######## format. Example: IT23986587.");
       return;
     }
 
+    // ============================================
+    // VALIDATION: Contact Number Format
+    // ============================================
+    // Must be exactly 10 digits (e.g., 0771234567)
     if (!CONTACT_NUMBER_REGEX.test(form.contactNumber.trim())) {
       setErrorMessage("Contact number must contain exactly 10 digits.");
       return;
     }
 
+    // ============================================
+    // VALIDATION: Course Code Format
+    // ============================================
+    // Must be "IT" followed by exactly 4 digits (e.g., IT3030)
     if (!COURSE_CODE_REGEX.test(form.courseCode.trim().toUpperCase())) {
       setErrorMessage("Course code must follow IT#### format. Example: IT3030.");
       return;
@@ -376,6 +444,7 @@ export default function TicketsPage({ view = "create" }) {
     setIsSubmitting(true);
 
     try {
+      // Convert selected files to base64 format for API submission
       const attachments = await Promise.all(
         selectedFiles.map(async (file) => ({
           fileName: file.name,
@@ -489,30 +558,54 @@ export default function TicketsPage({ view = "create" }) {
     setErrorMessage("");
   }
 
+  /**
+   * Handles ticket update form submission.
+   * Validates all required fields and processes attachment deletions before updating.
+   */
   async function handleUpdateTicket(ticketId) {
     setErrorMessage("");
     setSuccessMessage("");
 
+    // ============================================
+    // VALIDATION: User Authentication
+    // ============================================
+    // Ensure user is logged in and has name/email from their account
     if (!loggedUser || !editForm.reporterName.trim() || !editForm.reporterEmail.trim()) {
       setErrorMessage("Please login first. Name and email are taken from your account.");
       return;
     }
 
+    // ============================================
+    // VALIDATION: Register Number Format
+    // ============================================
+    // Must be "IT" followed by exactly 8 digits (e.g., IT12345678)
     if (!REGISTER_NUMBER_REGEX.test(editForm.registerNumber.trim().toUpperCase())) {
       setErrorMessage("Register number must follow IT######## format. Example: IT23986587.");
       return;
     }
 
+    // ============================================
+    // VALIDATION: Contact Number Format
+    // ============================================
+    // Must be exactly 10 digits (e.g., 0771234567)
     if (!CONTACT_NUMBER_REGEX.test(editForm.contactNumber.trim())) {
       setErrorMessage("Contact number must contain exactly 10 digits.");
       return;
     }
 
+    // ============================================
+    // VALIDATION: Course Code Format
+    // ============================================
+    // Must be "IT" followed by exactly 4 digits (e.g., IT3030)
     if (!COURSE_CODE_REGEX.test(editForm.courseCode.trim().toUpperCase())) {
       setErrorMessage("Course code must follow IT#### format. Example: IT3030.");
       return;
     }
 
+    // ============================================
+    // VALIDATION: Ticket Existence
+    // ============================================
+    // Ensure the ticket being edited still exists
     const existingTicket = tickets.find((ticket) => ticket.id === ticketId);
     if (!existingTicket) {
       setErrorMessage("Ticket not found.");
@@ -522,6 +615,7 @@ export default function TicketsPage({ view = "create" }) {
     setIsSubmitting(true);
 
     try {
+      // Convert newly selected files to base64 format
       const newAttachments = await Promise.all(
         editSelectedFiles.map(async (file) => ({
           fileName: file.name,
@@ -532,11 +626,16 @@ export default function TicketsPage({ view = "create" }) {
         }))
       );
 
-      // Filter out attachments marked for deletion
+      // ============================================
+      // ATTACHMENT DELETION PROCESSING
+      // ============================================
+      // Filter out attachments that were marked for deletion by the user
+      // Only keep attachments whose fileName is NOT in the attachmentsToDelete array
       const remainingAttachments = (existingTicket.attachments || []).filter(
         (attachment) => !attachmentsToDelete.includes(attachment.fileName)
       );
 
+      // Send update request with remaining old attachments + new attachments
       const updatedTicket = await updateTicket(ticketId, {
         reporterName: editForm.reporterName,
         reporterEmail: editForm.reporterEmail,

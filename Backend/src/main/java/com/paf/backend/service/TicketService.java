@@ -352,45 +352,63 @@ public class TicketService {
         );
     }
 
+    /**
+     * Validates and normalizes all ticket request fields.
+     * This method performs additional business logic validation beyond the basic @Valid annotations.
+     * 
+     * @param request The ticket request to validate
+     * @return ValidatedTicket object with normalized and validated data
+     * @throws IllegalArgumentException if any validation fails
+     */
     private ValidatedTicket validateAndNormalize(TicketRequest request) {
+        // Normalize and validate reporter information
         String reporterName = normalizeRequiredText(request.reporterName(), "Reporter name is required");
         String reporterEmail = normalizeRequiredText(request.reporterEmail(), "Reporter email is required")
-                .toLowerCase(Locale.ROOT);
+                .toLowerCase(Locale.ROOT);  // Convert email to lowercase for consistency
         String registerNumber = normalizeRequiredText(request.registerNumber(), "Register number is required")
-                .toUpperCase(Locale.ROOT);
+                .toUpperCase(Locale.ROOT);  // Convert register number to uppercase (IT12345678)
         String faculty = normalizeRequiredEnum(request.faculty(), FACULTY_NORMALIZATION, "faculty");
         String contactNumber = normalizeRequiredText(request.contactNumber(), "Contact number is required");
 
+        // Validate email format using regex pattern
         if (!EMAIL_PATTERN.matcher(reporterEmail).matches()) {
             throw new IllegalArgumentException("Reporter email must be valid");
         }
 
+        // Validate register number format (IT followed by 8 digits)
         if (!REGISTER_NUMBER_PATTERN.matcher(registerNumber).matches()) {
             throw new IllegalArgumentException("Register number must follow IT######## format");
         }
 
+        // Validate contact number format (exactly 10 digits)
         if (!CONTACT_NUMBER_PATTERN.matcher(contactNumber).matches()) {
             throw new IllegalArgumentException("Contact number must contain exactly 10 digits");
         }
 
+        // Normalize and validate ticket details
         String title = normalizeRequiredText(request.title(), "Ticket title is required");
         String category = normalizeRequiredEnum(request.category(), CATEGORY_NORMALIZATION, "category");
         String priority = normalizeRequiredEnum(request.priority(), PRIORITY_NORMALIZATION, "priority");
         String courseCode = normalizeRequiredText(request.courseCode(), "Course code is required")
-                .toUpperCase(Locale.ROOT);
+                .toUpperCase(Locale.ROOT);  // Convert course code to uppercase (IT3030)
 
+        // Validate course code format (IT followed by 4 digits)
         if (!COURSE_CODE_PATTERN.matcher(courseCode).matches()) {
             throw new IllegalArgumentException("Course code must follow IT#### format");
         }
 
+        // Normalize and validate academic information
         String year = normalizeRequiredEnum(request.year(), YEAR_NORMALIZATION, "year");
         String semester = normalizeRequiredEnum(request.semester(), SEMESTER_NORMALIZATION, "semester");
         String description = normalizeRequiredText(request.description(), "Description is required");
+        
+        // Normalize and validate attachments (if any)
         List<TicketAttachmentResponse> attachments = normalizeAttachments(
                 request.attachments(),
                 UPLOADED_BY_STUDENT
         );
 
+        // Return validated and normalized ticket data
         return new ValidatedTicket(
                 reporterName,
                 reporterEmail,
@@ -408,14 +426,25 @@ public class TicketService {
         );
     }
 
+    /**
+     * Validates and normalizes attachment list.
+     * Checks attachment count and file size limits.
+     * 
+     * @param attachments List of attachment requests
+     * @param defaultUploadedBy Default uploader identifier
+     * @return List of validated attachment responses
+     * @throws IllegalArgumentException if validation fails
+     */
     private List<TicketAttachmentResponse> normalizeAttachments(
             List<TicketAttachmentRequest> attachments,
             String defaultUploadedBy
     ) {
+        // Return empty list if no attachments provided
         if (attachments == null || attachments.isEmpty()) {
             return List.of();
         }
 
+        // Validate attachment count (max 5 files)
         if (attachments.size() > MAX_ATTACHMENT_COUNT) {
             throw new IllegalArgumentException("Maximum " + MAX_ATTACHMENT_COUNT + " attachments are allowed");
         }
